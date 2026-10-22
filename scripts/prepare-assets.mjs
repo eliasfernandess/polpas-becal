@@ -27,3 +27,8 @@ for (const font of ["dm-sans", "fraunces"]) {
 }
 console.log("10 produtos, logotipo, imagem social e fontes locais preparados.");
 
+
+// Foto da foodbike fornecida pelo solicitante em 21/10/2026.
+for (const width of [1600, 800]) {
+  await sharp(path.join(downloads, "Bicicleta de Smoothie Tropical 100% Fruta.png")).resize({ width, withoutEnlargement: true }).webp({ quality: 88 }).toFile(`public/images/events/foodbike${width === 800 ? "-800" : ""}.webp`);
+}

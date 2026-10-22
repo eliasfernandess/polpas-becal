@@ -14,7 +14,8 @@ test("capturas para revisão visual", async ({ page }, testInfo) => {
       await expect(image).toHaveJSProperty("complete", true);
     }
     await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
-    if (name === "inicio") await page.screenshot({ path: path.join(dir, `${name}-${testInfo.project.name}-destaque.png`), animations: "disabled" });
+    if (name === "inicio" || name === "eventos") await page.screenshot({ path: path.join(dir, `${name}-${testInfo.project.name}-destaque.png`), animations: "disabled" });
+    if (name === "inicio") await page.locator(".event-banner").screenshot({ path: path.join(dir, `foodbike-${testInfo.project.name}.png`), animations: "disabled" });
     await page.screenshot({ path: path.join(dir, `${name}-${testInfo.project.name}.png`), fullPage: true, animations: "disabled" });
   }
 });

@@ -1,5 +1,7 @@
 # Verificação da entrega
 
+Atualização de 21/10/2026: interface com DM Sans sem serifa e foto da foodbike fornecida pelo solicitante. Build, lint e os 58 testes unitários passaram novamente. As quatro verificações de captura visual e responsividade/cabeçalhos passaram em desktop e celular, incluindo todas as rotas em 320 px. Os fluxos comerciais não foram alterados nesta atualização.
+
 Execução em 20/10/2026, horário de São Paulo.
 
 | Verificação | Resultado |

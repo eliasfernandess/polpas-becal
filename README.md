@@ -71,7 +71,7 @@ Antes de lançamento público, confirmar com a empresa:
 3. Sabores efetivamente vendidos, composição e alegação “100% fruta / natural”.
 4. Preço oficial, peso comercial e disponibilidade de cada item. **Todos os preços, unidades de 100 g e estados de disponibilidade cadastrados são demonstrativos.** Tamarindo aparece indisponível apenas para demonstrar esse estado.
 5. Área de atendimento, entrega, retirada, pedido mínimo e condições de venda.
-6. Existência, aparência e estrutura da foodbike, cidades atendidas, equipe, duração e condições de contratação. A ilustração SVG não representa uma estrutura confirmada.
+6. Existência, aparência e estrutura da foodbike, cidades atendidas, equipe, duração e condições de contratação. A foto da foodbike foi fornecida para a apresentação e não substitui a confirmação da estrutura disponível.
 7. Razão social, CNPJ, endereço e responsável pelo tratamento, sem inventar esses dados.
 8. Canal oficial de privacidade, bases legais e rotinas de retenção/atendimento no WhatsApp, com revisão jurídica dos documentos.
 9. Hospedagem definitiva e domínio antes de atualizar metadados e permitir indexação.
@@ -111,7 +111,7 @@ Ao aprovar o lançamento: ajustar origem, documentos e dados comerciais; revisar
 
 ## Materiais e dependências
 
-As imagens foram fornecidas pelo solicitante e apenas redimensionadas/codificadas para WebP. O logotipo foi mantido. A foodbike é um desenho SVG original identificado como ilustração; não foi usada fotografia de terceiros. Fontes DM Sans e Fraunces são servidas localmente, com licenças em public/fonts.
+As imagens foram fornecidas pelo solicitante e apenas redimensionadas/codificadas para WebP. O logotipo foi mantido. A seção e a página de foodbike usam a foto fornecida pelo solicitante, otimizada em WebP com versões de 800 e 1600 pixels. A interface inteira usa DM Sans, sem serifa, servida localmente e com licença em public/fonts.
 
 scripts/prepare-assets.mjs documenta o mapeamento das imagens originais no computador de criação; só é necessário para reprocessá-las. Os nomes e números impressos nas artes permanecem como recebidos, sem recriação do rótulo.
 
