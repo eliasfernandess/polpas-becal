@@ -4,13 +4,15 @@ import type { CartItem } from "@/types/product";
 export const MAX_QUANTITY = 99;
 export const CART_KEY = "becal:cart:v1";
 const itemSchema = z.object({ id: z.string().max(60), quantity: z.number().int().min(1).max(MAX_QUANTITY) }).strict();
+/** Limite por item: o menor entre o teto do carrinho e o estoque atual. */
+export const maxQuantityFor = (id: string) => Math.min(MAX_QUANTITY, productById.get(id)?.stock ?? 0);
 export function sanitizeCart(value: unknown): CartItem[] {
   if (!Array.isArray(value) || value.length > 100) return [];
   const entries = new Map<string, number>();
   for (const candidate of value) {
     const parsed = itemSchema.safeParse(candidate);
     if (!parsed.success || !productById.get(parsed.data.id)?.available) continue;
-    entries.set(parsed.data.id, Math.min(MAX_QUANTITY, (entries.get(parsed.data.id) || 0) + parsed.data.quantity));
+    entries.set(parsed.data.id, Math.min(maxQuantityFor(parsed.data.id), (entries.get(parsed.data.id) || 0) + parsed.data.quantity));
   }
   return [...entries].map(([id, quantity]) => ({ id, quantity }));
 }
@@ -23,10 +25,12 @@ export type CartAction =
   | { type: "set"; id: string; quantity: number }
   | { type: "remove"; id: string }
   | { type: "clear" }
-  | { type: "hydrate"; items: unknown };
+  | { type: "hydrate"; items: unknown }
+  | { type: "revalidate" };
 export function updateCart(current: CartItem[], action: CartAction): CartItem[] {
   const items = sanitizeCart(current);
   if (action.type === "clear") return [];
+  if (action.type === "revalidate") return items;
   if (action.type === "hydrate") return sanitizeCart(action.items);
   if (action.type === "remove") return items.filter(item => item.id !== action.id);
   if (!productById.get(action.id)?.available || !Number.isInteger(action.quantity) || action.quantity < 0 || action.quantity > MAX_QUANTITY) return items;

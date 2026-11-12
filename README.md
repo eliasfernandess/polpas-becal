@@ -1,6 +1,52 @@
 # Polpas Becal
 
-Vitrine comercial demonstrativa, construída com Next.js 16, React 19, TypeScript estrito, Tailwind CSS 4, Lucide e Zod. Exportação estática sem servidor de aplicação, banco de dados, autenticação de clientes ou pagamentos.
+Vitrine comercial demonstrativa com painel de estoque, construída com Next.js 16, React 19, TypeScript estrito, Tailwind CSS 4, Lucide e Zod. Exportação estática, sem servidor de aplicação próprio, cadastro de clientes ou pagamentos. Catálogo, estoque e login do administrador ficam no Supabase (opcional: sem ele, o painel roda em modo demonstração).
+
+## Painel administrativo (/admin/)
+
+Em `/admin/` é possível criar, editar, ocultar e excluir produtos, enviar fotos, definir preço, destaque e alerta de estoque baixo, e lançar **entradas, saídas e contagens** de estoque. Toda alteração de saldo vira uma linha em *Movimentações*. A loja reflete o estoque: produto zerado aparece como "Esgotado", estoque baixo mostra "Últimas N un." e o carrinho não aceita mais unidades do que há em estoque. O pedido continua sendo fechado pelo WhatsApp, então **a venda não baixa o estoque sozinha**: registre a saída no painel.
+
+O painel tem quatro abas:
+
+- **Visão geral:** o que repor primeiro, vendas, entradas e saídas dos últimos 30 dias, sabores mais vendidos e atividade recente. O valor das vendas é uma estimativa a preço atual de catálogo (o preço da época não é guardado).
+- **Produtos:** cadastro, busca, filtros e exportação do estoque em CSV.
+- **Movimentações:** histórico com busca, filtros (entradas, saídas, vendas), quem registrou e exportação em CSV.
+- **Equipe** (só administradores): contas, funções e convites.
+
+**Registrar venda** baixa vários sabores de uma vez: ou todos os itens saem do estoque, ou nenhum.
+
+### Contas e funções
+
+| Função | Pode |
+| --- | --- |
+| Administrador | Tudo: produtos, preços, fotos, estoque, vendas, equipe |
+| Estoque | Consultar o painel e lançar entradas, saídas, contagens e vendas |
+
+Para dar acesso a alguém, um administrador abre **Equipe → Convidar pessoa** e informa nome, e-mail e função. O painel **não envia e-mail**: avise a pessoa para abrir `/admin/`, escolher “Recebi um convite” e criar a senha dela com o mesmo e-mail. Ao confirmar o e-mail e entrar, ela passa a fazer parte da equipe. Ninguém além da própria pessoa conhece a senha. Um administrador pode trocar a função ou remover o acesso de qualquer outra conta, mas não a própria (para a loja nunca ficar sem administrador por engano). “Esqueci a senha” e “Minha conta” cobrem a troca de senha.
+
+Para isso funcionar, mantenha no Supabase o cadastro por e-mail **habilitado** e **Confirm email ligado** (Authentication → Sign In / Providers): é a confirmação do e-mail que garante que só o dono do endereço convidado entra. Contas criadas sem convite ficam sem acesso a nada. Em Authentication → URL Configuration, inclua o endereço do site com `/admin/` nas URLs de redirecionamento.
+
+### Modo demonstração (padrão)
+
+Sem as variáveis do Supabase, o painel abre sem login e grava tudo no `localStorage` do navegador (chaves `becal:catalog:v1` e `becal:team:v1`). Os convites da aba Equipe são apenas simulados. Serve para apresentar o fluxo: as alterações aparecem na loja **apenas naquele navegador**.
+
+### Publicar com Supabase
+
+1. Crie um projeto gratuito em https://supabase.com.
+2. No **SQL Editor**, cole e execute o conteúdo de `supabase/schema.sql` (tabelas, políticas de acesso, função de movimentação, bucket de fotos e os dez sabores iniciais).
+3. Em **Authentication → Users → Add user**, crie o primeiro administrador (e-mail e senha).
+4. De volta ao SQL Editor, autorize esse usuário, trocando o e-mail e o nome:
+   ```sql
+   insert into public.admins (user_id, email, name, role)
+   select id, lower(email), 'Seu nome', 'admin' from auth.users where email = 'voce@exemplo.com';
+   ```
+   As demais contas são criadas por convite, pela aba Equipe.
+5. Copie `.env.example` para `.env.local` e preencha `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` (Project Settings → API). Na Vercel/Cloudflare, cadastre as mesmas variáveis no projeto.
+6. Refaça o build. O script de exportação libera o endereço do Supabase na CSP automaticamente.
+
+A chave `anon` é pública por natureza. A proteção está nas políticas (RLS) do `schema.sql`: visitantes só leem produtos ativos; só a equipe (`public.admins`) movimenta estoque e só administradores alteram produtos e equipe. Se o banco foi criado com uma versão anterior do `schema.sql`, execute o arquivo de novo: ele atualiza sem apagar dados. Nunca use a chave `service_role` no site.
+
+Limites conhecidos: a loja mostra o catálogo inicial (`src/data/products.ts`) por um instante até a resposta do Supabase chegar, e continua com ele se a consulta falhar.
 
 ## Executar
 
@@ -42,17 +88,19 @@ As capturas opcionais são habilitadas pela variável SITE_PREVIEW_DIR apontando
 - Carrinho em diálogo nativo com retenção de foco, Escape, persistência e atualização entre abas.
 - Total calculado em centavos pelo catálogo atual. Armazenamento contém somente identificadores e quantidades; preços adulterados e itens desconhecidos são descartados.
 - Pedido pelo link oficial wa.me: unidade, valor unitário, quantidade, subtotal, total estimado e pedido de confirmação.
-- Página de eventos e formulário validado com Zod, mensagens próximas aos campos e datas no calendário local.
+- Página de eventos com orçamento em cinco etapas (ocasião, data e local, tamanho, contato, revisão), validado com Zod a cada etapa, com retorno a etapas anteriores sem perder o que foi preenchido.
 - WhatsApp aberto com a solicitação preenchida; fallback de link caso o navegador bloqueie a janela. Não há confirmação automática de envio, compra ou reserva.
 - Termos, privacidade, 404, metadados, imagem social, sitemap e robots. A demonstração usa noindex/nofollow.
 
-Rotas: /, /produtos/, /eventos/, /privacidade/, /termos/.
+Rotas: /, /produtos/, /eventos/, /privacidade/, /termos/ e /admin/ (painel).
 
 ## Onde editar
 
 | Conteúdo | Arquivo |
 | --- | --- |
-| Preços em centavos, unidades, descrições, categorias, destaque e disponibilidade | src/data/products.ts |
+| Produtos, preços, fotos, destaque e estoque | Painel em /admin/ (catálogo inicial em src/data/products.ts e supabase/schema.sql) |
+| Regras do catálogo, validação de produto e leitura do Supabase | src/lib/catalog.ts e src/lib/admin-repo.ts |
+| Telas do painel | src/components/admin/ e src/app/admin/admin.css |
 | Número do WhatsApp, Instagram e origem do site | src/data/business.ts |
 | Validação de orçamento, limites de texto e opções | src/lib/validation.ts |
 | Mensagens e validação do destino wa.me | src/lib/whatsapp.ts |
@@ -88,7 +136,7 @@ Os documentos iniciais não representam certificação de conformidade com a LGP
 
 ## Segurança e publicação
 
-A aplicação usa escaping do React, validação estrita, limites de entrada, destino do WhatsApp fixo e links externos com noopener/noreferrer. O formulário não usa uma requisição GET para um servidor próprio. Não existem endpoints de escrita, uploads, pagamento ou cadastro.
+A aplicação usa escaping do React, validação estrita, limites de entrada, destino do WhatsApp fixo e links externos com noopener/noreferrer. O formulário não usa uma requisição GET para um servidor próprio. O site não tem endpoints próprios de escrita, pagamento ou cadastro de clientes; a única escrita é a do painel, feita direto no Supabase por um administrador autenticado e limitada pelas políticas de supabase/schema.sql. Fotos enviadas pelo painel são reduzidas e convertidas para WebP no navegador antes do envio.
 
 O build executa scripts/secure-export.mjs **após** o Next.js e calcula hashes SHA-256 dos scripts inline efetivamente exportados. A CSP de produção não permite unsafe-eval nem unsafe-inline para scripts. style-src permite unsafe-inline por compatibilidade com estilos de componentes e do framework; scripts continuam limitados à mesma origem e aos hashes gerados. A política bloqueia objetos, frames e submissões HTML convencionais; orçamento é tratado por JavaScript local.
 

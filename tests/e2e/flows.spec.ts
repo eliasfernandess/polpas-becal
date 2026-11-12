@@ -30,13 +30,33 @@ test("orçamento validado, WhatsApp codificado e nenhum dado persistido", async 
   page.on("request", req => { if (!req.url().startsWith("http://127.0.0.1:3000")) externalRequests.push(req.url()); });
   await page.addInitScript(() => { window.open = (url) => { (window as unknown as { capturedWhatsApp: string }).capturedWhatsApp = String(url); return null; }; });
   await page.goto("/eventos/");
-  await page.getByRole("button", { name: "Solicitar orçamento", exact: true }).click();
+  const next = page.getByRole("button", { name: "Continuar", exact: true });
+  // Etapa 1: não avança sem escolher a ocasião.
+  await expect(page.getByRole("heading", { name: "Qual é a ocasião?" })).toBeVisible();
+  await next.click();
   await expect(page.getByRole("alert").filter({ hasText: "Revise" })).toBeVisible();
-  await page.getByLabel("Seu nome", { exact: false }).fill("João & Ana");
-  await page.getByLabel("Tipo de evento").selectOption("Casamento");
+  await expect(page.getByText("Escolha o tipo de evento.")).toBeVisible();
+  await page.getByText("Casamento", { exact: true }).click();
+  await next.click();
+  // Etapa 2: data e local, com validação própria.
+  await expect(page.getByRole("heading", { name: "Quando e onde vai ser?" })).toBeFocused();
+  await next.click();
+  await expect(page.getByText("Informe uma data válida.")).toBeVisible();
   await page.getByLabel("Data do evento").fill("2099-12-20");
-  await page.getByLabel("Estimativa de convidados").selectOption("De 51 a 100");
   await page.getByLabel("Cidade e local do evento").fill("Salão São José");
+  await page.getByLabel("Cidade e local do evento").press("Enter");
+  // Etapa 3: tamanho.
+  await page.getByText("De 51 a 100", { exact: true }).click();
+  await next.click();
+  // Etapa 4: contato.
+  await page.getByLabel("Seu nome", { exact: false }).fill("João & Ana");
+  await next.click();
+  // Revisão: permite voltar a uma etapa e manter o que foi preenchido.
+  await expect(page.getByRole("heading", { name: "Tudo certo?" })).toBeVisible();
+  await expect(page.locator(".form-review")).toContainText("20/12/2099");
+  await page.getByRole("button", { name: "Editar onde" }).click();
+  await expect(page.getByLabel("Cidade e local do evento")).toHaveValue("Salão São José");
+  await page.getByRole("button", { name: "Etapa 5: Revisão" }).click();
   await page.getByRole("button", { name: "Solicitar orçamento", exact: true }).click();
   await expect(page.getByText("Sua mensagem está pronta.")).toBeVisible();
   const target = await page.evaluate(() => (window as unknown as { capturedWhatsApp: string }).capturedWhatsApp);
@@ -47,7 +67,7 @@ test("orçamento validado, WhatsApp codificado e nenhum dado persistido", async 
   expect(url.searchParams.get("text")).toContain("Salão São José");
   const saved = await page.evaluate(() => JSON.stringify({ ...localStorage, ...sessionStorage }));
   expect(saved).not.toContain("João"); expect(saved).not.toContain("Salão"); expect(externalRequests).toEqual([]);
-  await expect(page.getByLabel("Seu nome", { exact: false })).toHaveValue("João & Ana");
+  await expect(page.locator(".form-review")).toContainText("João & Ana");
 });
 test("cabeçalhos de segurança, rotas e responsividade", async ({ page, request }) => {
   const response = await request.get("/");
