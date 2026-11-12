@@ -44,6 +44,38 @@ export interface StockMovement {
   createdAt: string;
 }
 
+/* ---------- Pedidos e orçamentos registrados pelo site ---------- */
+
+export type OrderStatus = "pending_whatsapp" | "contacted" | "confirmed" | "cancelled";
+export interface OrderItem { id: string; name: string; unitLabel: string; priceInCents: number; quantity: number }
+export interface OrderRecord {
+  id: string;
+  createdAt: string;
+  status: OrderStatus;
+  items: OrderItem[];
+  totalInCents: number;
+  customerName: string;
+  customerPhone: string;
+  /** "nao_informado": pedidos feitos antes do checkout com dados do cliente. */
+  fulfillment: "entrega" | "retirada" | "nao_informado";
+  address: { postalCode: string; street: string; number: string; complement: string; district: string; city: string };
+}
+export type QuoteStatus = "pending_whatsapp" | "contacted" | "quoted" | "confirmed" | "cancelled";
+export interface QuoteRecord {
+  id: string;
+  createdAt: string;
+  status: QuoteStatus;
+  name: string;
+  phone: string;
+  type: string;
+  date: string;
+  time: string;
+  guests: string;
+  location: string;
+  duration: string;
+  notes: string;
+}
+
 /** admin: produtos, preços, estoque e equipe. estoque: consulta e lança movimentações e vendas. */
 export type Role = "admin" | "estoque";
 export interface TeamMember { id: string; name: string; email: string; role: Role; self: boolean }

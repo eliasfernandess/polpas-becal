@@ -4,12 +4,6 @@ import { FoodbikeBanner } from "@/components/foodbike";
 import { FeaturedProducts } from "@/components/products";
 import { business } from "@/data/business";
 
-const shelf = [
-  { id: "maracuja", name: "Maracujá", tone: "yellow" },
-  { id: "morango", name: "Morango", tone: "pink" },
-  { id: "manga", name: "Manga", tone: "peach" },
-] as const;
-
 export default function Home() {
   return <main id="conteudo">
     <section className="hero container">
@@ -22,13 +16,14 @@ export default function Home() {
           <Link href="/eventos/" className="text-link">Vai fazer um evento? <ArrowRight size={16} /></Link>
         </div>
       </div>
-      <div className="hero-shelf">
-        {shelf.map((item, index) => <Link href="/produtos/" key={item.id} className={`shelf-tile tone-${item.tone}`}>
-          <img src={`/images/products/${item.id}.webp`} alt={`Polpa de ${item.name.toLowerCase()} Polpas Becal`} width="440" height="440" fetchPriority={index === 0 ? "high" : undefined} />
-          <span>{item.name}</span>
-        </Link>)}
-        <div className="shelf-stamp" aria-hidden="true"><strong>100%</strong><span>fruta</span></div>
-      </div>
+      {/* Composição vertical no computador; horizontal no celular, onde a imagem vem abaixo do texto. */}
+      <Link href="/produtos/" className="hero-art" aria-label="Ver todos os sabores">
+        <picture>
+          <source media="(max-width: 900px)" srcSet="/images/hero/polpas-horizontal-800.webp 800w, /images/hero/polpas-horizontal-1400.webp 1400w" sizes="calc(100vw - 40px)" width="1400" height="933" />
+          <img src="/images/hero/polpas-vertical-1100.webp" srcSet="/images/hero/polpas-vertical-640.webp 640w, /images/hero/polpas-vertical-1100.webp 1100w" sizes="(max-width: 1240px) 48vw, 580px" width="1100" height="1326" alt="Polpas Becal de morango, maracujá e limão com as frutas frescas" fetchPriority="high" />
+        </picture>
+        <span className="hero-stamp" aria-hidden="true"><strong>100%</strong><span>fruta</span></span>
+      </Link>
     </section>
 
     <section className="promises container" aria-label="A essência Polpas Becal">
@@ -46,7 +41,6 @@ export default function Home() {
         <Link href="/produtos/" className="text-link">Conheça todas as polpas <ArrowUpRight size={17} /></Link>
       </div>
       <FeaturedProducts />
-      <p className="demo-note">Vitrine demonstrativa: preços, unidades e disponibilidade sujeitos à confirmação.</p>
     </section>
 
     <section id="sobre" className="essence">

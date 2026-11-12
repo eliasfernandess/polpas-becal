@@ -1,7 +1,35 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-export const metadata: Metadata = { title: "Termos de uso", description: "Condições de utilização do catálogo demonstrativo, dos pedidos estimados e da solicitação de orçamento Polpas Becal." };
-export default function TermsPage() {
-  return <main id="conteudo" className="legal-page container"><span className="eyebrow">UMA CONVERSA CLARA</span><h1>Termos<br /><em>de uso.</em></h1><p className="legal-intro">Documento inicial do protótipo, sujeito à validação jurídica e comercial antes da publicação pública.</p><section><h2>1. Natureza demonstrativa</h2><p>O site é uma vitrine demonstrativa da Polpas Becal. Preços, unidades comerciais, categorias e disponibilidade são ilustrativos. As fotografias de embalagens e o logotipo foram fornecidos para este projeto. A imagem da foodbike foi fornecida para esta apresentação; estrutura e condições de atendimento devem ser confirmadas com a equipe.</p></section><section><h2>2. Pedidos pelo WhatsApp</h2><p>O carrinho organiza uma intenção de compra e calcula um total estimado. O botão de WhatsApp abre uma mensagem preenchida, que você ainda precisa enviar. Ao clicar em Registrar pedido, o site salva uma intenção de compra para atendimento e oferece a mensagem do WhatsApp com uma referência. Não há pagamento, confirmação automática de compra, reserva de estoque ou contrato. Preços oficiais, disponibilidade, entrega ou retirada devem ser confirmados diretamente com a empresa.</p></section><section><h2>3. Eventos</h2><p>Ao enviar o formulário, a solicitação de orçamento fica registrada para atendimento, com uma referência para a conversa no WhatsApp. O preenchimento ou envio não confirma disponibilidade, reserva de data ou contratação. Estrutura, atendimento, valores, duração e condições serão discutidos com a Polpas Becal.</p></section><section><h2>4. Uso responsável</h2><p>Forneça apenas informações necessárias e adequadas à conversa comercial. Não tente comprometer o funcionamento do site ou transmitir conteúdo ilícito. A vitrine não solicita documentos, credenciais nem dados de pagamento.</p></section><section><h2>5. Identificação e contato</h2><p>A marca apresentada é Polpas Becal. Razão social, CNPJ e endereço estão pendentes de confirmação. O telefone informado no briefing é +55 34 99649-3471 e o perfil é @polpasbecal. Ambos devem ser confirmados pela empresa antes do lançamento público.</p></section><section><h2>6. Privacidade e revisão</h2><p>Veja a <Link href="/privacidade/">Política de privacidade</Link> para entender o tratamento de dados. Estes termos deverão ser ajustados às condições comerciais reais e à hospedagem definitiva. Nenhuma disposição pretende afastar direitos previstos na legislação aplicável.</p></section><Link className="text-link" href="/">Voltar para o início ↗</Link></main>;
-}
+import { business } from "@/data/business";
 
+export const metadata: Metadata = { title: "Termos de uso", description: "Como funcionam os pedidos e os orçamentos feitos no site da Polpas Becal." };
+
+export default function TermsPage() {
+  return <main id="conteudo" className="legal-page container">
+    <span className="eyebrow">Uma conversa clara</span>
+    <h1>Termos <em>de uso.</em></h1>
+    <p className="legal-intro">Ao usar este site, você concorda com as condições abaixo. Qualquer dúvida, chame a gente no WhatsApp.</p>
+    <section>
+      <h2>1. Pedidos</h2>
+      <p>Você escolhe os sabores, informa seus dados e a forma de recebimento, e o pedido é registrado para a nossa equipe. A compra é confirmada pelo WhatsApp, onde combinamos pagamento, taxa de entrega e horário. O pedido só está fechado depois dessa confirmação.</p>
+      <p>Os preços exibidos são os vigentes no momento do pedido. Se um sabor acabar antes da confirmação, avisamos e combinamos uma alternativa.</p>
+    </section>
+    <section>
+      <h2>2. Entrega e retirada</h2>
+      <p>Entregas dependem da região e têm taxa combinada no WhatsApp. Na retirada, informamos o local e o horário. As polpas são congeladas: mantenha a -18 °C ou mais frio.</p>
+    </section>
+    <section>
+      <h2>3. Foodbike para eventos</h2>
+      <p>O formulário de eventos é uma solicitação de orçamento. A data só fica reservada depois que a proposta for aceita pelo WhatsApp.</p>
+    </section>
+    <section>
+      <h2>4. Uso responsável</h2>
+      <p>Informe dados verdadeiros e apenas o necessário para o atendimento. Não tente comprometer o funcionamento do site.</p>
+    </section>
+    <section>
+      <h2>5. Contato</h2>
+      <p>WhatsApp {business.whatsapp} · Instagram {business.instagramHandle}. Veja também a <Link href="/privacidade/">Política de privacidade</Link>.</p>
+    </section>
+    <Link className="text-link" href="/">Voltar para o início</Link>
+  </main>;
+}

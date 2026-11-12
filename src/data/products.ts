@@ -4,7 +4,7 @@ export const toProduct = (data: ProductData): Product => ({ ...data, slug: data.
 
 type Seed = Pick<ProductData, "id" | "name" | "description" | "priceInCents" | "category" | "stock"> & { tone: Tone; featured?: boolean };
 
-// Catálogo inicial. Valores, unidades e estoques são demonstrativos e precisam de aprovação.
+// Catálogo inicial, usado sem Supabase (modo local). Em produção, o catálogo vem do banco e é editado no painel.
 // Com o Supabase configurado, o catálogo publicado vem do banco (ver supabase/schema.sql).
 const seed: Seed[] = [
   { id: "morango", name: "Morango", description: "Delicado, marcante e cheio de possibilidades. Vai bem do suco à sobremesa.", priceInCents: 490, category: "Clássicos", featured: true, tone: "pink", stock: 180 },

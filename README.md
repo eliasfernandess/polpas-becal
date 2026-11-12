@@ -15,8 +15,9 @@ Sem as duas variáveis do Supabase, tudo roda em **modo demonstração**: a loja
 - Variáveis públicas: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SITE_URL`.
 - Migrações versionadas em `supabase/migrations/`, aplicadas em ordem:
   1. `20261112150046_catalog_orders_quotes.sql`: catálogo, pedidos e orçamentos.
-  2. `20261113120000_painel_estoque_equipe.sql`: estoque, movimentações, vendas, equipe, convites e fotos. Acrescenta colunas e permissões **sem recriar tabelas nem apagar dados**, e lança um estoque inicial demonstrativo nos dez sabores.
-- Para aplicar: `npx supabase link --project-ref zcxojunqupnpujhhplnb` (uma vez) e `npx supabase db push`. Até a segunda migração ser aplicada, a loja continua vendendo como antes, sem limite de estoque, e o painel avisa que o banco está desatualizado.
+  2. `20261113120000_painel_estoque_equipe.sql`: estoque, movimentações, vendas, equipe, convites e fotos. Acrescenta colunas e permissões **sem recriar tabelas nem apagar dados**, e lança um estoque inicial nos dez sabores.
+  3. `20261114120000_pedidos_clientes.sql`: nome, telefone e entrega/retirada nos pedidos, telefone nos orçamentos, leitura de pedidos e orçamentos pela equipe e `confirm_order` (confirma e baixa o estoque).
+- Para aplicar: `npx supabase link --project-ref zcxojunqupnpujhhplnb` (uma vez) e `npx supabase db push`. Sem a CLI, cole cada arquivo no SQL Editor e marque-o como aplicado depois (`npx supabase migration repair --status applied <versão>`). Enquanto a migração 2 faltar, a loja vende sem limite de estoque; enquanto a 3 faltar, os pedidos são registrados sem os dados do cliente (que seguem na mensagem do WhatsApp) e o painel avisa que falta a migração.
 - `products`: visitantes leem só o que está à venda (`available`); a equipe vê também os ocultos. Só administradores criam e editam produtos. O estoque (`stock`) não pode ser gravado diretamente: só muda pelas funções `adjust_stock` e `record_sale`, que registram cada movimentação.
 - `orders`: visitantes podem inserir apenas ID aleatório, itens e total estimado. Um trigger verifica disponibilidade, **estoque** e quantidades, recalcula o total e grava um retrato dos produtos e preços. O cliente não pode ler, alterar ou excluir pedidos, nem definir o status. Um pedido é só uma intenção: quem baixa o estoque é a venda registrada no painel.
 - `event_requests`: visitantes podem inserir somente os campos do orçamento. O banco verifica campos obrigatórios, limites, opções e data.
@@ -25,14 +26,20 @@ Sem as duas variáveis do Supabase, tudo roda em **modo demonstração**: a loja
 
 ## Painel administrativo (/admin/)
 
-Quatro abas:
+Menu lateral com seis seções (no celular, vira uma gaveta):
 
-- **Visão geral:** o que repor primeiro, vendas, entradas e saídas dos últimos 30 dias, sabores mais vendidos e atividade recente. O valor das vendas é estimado a preço atual de catálogo.
+- **Início:** pedidos e orçamentos novos, sabores para repor e o resumo dos últimos 30 dias.
+- **Pedidos:** cada pedido do site com cliente, telefone (abre o WhatsApp), itens, total e entrega ou retirada. Marque como *em contato*, *cancelado* ou **Confirmar pedido**, que baixa o estoque de todos os itens de uma vez. Novos pedidos aparecem sozinhos a cada minuto.
+- **Orçamentos:** pedidos de orçamento da foodbike, com situação (novo, em contato, orçado, confirmado, cancelado).
 - **Produtos:** cadastro com foto, preço, categoria, cor, destaque e alerta de estoque baixo; ocultar, excluir, movimentar (entrada, saída, contagem) e exportar CSV.
 - **Movimentações:** histórico com busca, filtros, autoria e exportação CSV.
 - **Equipe** (só administradores): contas, funções e convites.
 
-**Registrar venda** baixa vários sabores de uma vez. Como o pedido é fechado pelo WhatsApp, registre a venda no painel ao confirmá-la.
+**Registrar venda** baixa vários sabores de uma vez, para vendas que não vieram pelo site.
+
+## Checkout
+
+O carrinho tem etapas: sacola → seus dados (nome e telefone) → entrega ou retirada → endereço (só na entrega: CEP, rua, número, complemento, bairro, cidade) → confirmar. Telefone e CEP são formatados ao digitar, os campos usam o preenchimento automático do navegador e cada etapa valida só os próprios campos. Com Supabase, **Registrar pedido** grava o pedido e abre o WhatsApp com a referência; sem Supabase, vai direto para o WhatsApp. Os dados do cliente ficam só na memória da página.
 
 ### Contas e funções
 
@@ -60,7 +67,7 @@ npm run build
 npm run test:e2e
 ```
 
-Os testes E2E usam Chrome e se adaptam ao build: sem Supabase, cobrem o modo demonstração e o painel; com Supabase, interceptam todas as chamadas ao banco (nenhum pedido fictício é criado) e cobrem registro, falhas, retentativa e banco sem a migração de estoque. Testes SQL transacionais ficam em `supabase/tests/` e fazem rollback: `access.sql` (loja) e `painel.sql` (equipe, funções, convites, estoque e vendas).
+Os testes SQL (`supabase/tests/`) cobrem loja, painel e pedidos. Os testes E2E usam Chrome e se adaptam ao build: sem Supabase, cobrem o modo demonstração e o painel; com Supabase, interceptam todas as chamadas ao banco (nenhum pedido fictício é criado) e cobrem registro, falhas, retentativa e banco sem a migração de estoque. Testes SQL transacionais fazem rollback: `access.sql` (loja), `painel.sql` (equipe, funções, convites, estoque e vendas) e `pedidos.sql` (cliente, entrega e confirmação de pedidos).
 
 ## Hospedagem e segurança
 
@@ -68,7 +75,7 @@ O build exporta `out/` e calcula hashes CSP dos scripts inline. A CSP permite co
 
 RLS está habilitado em todas as tabelas públicas. A chave publishable identifica o projeto, não um usuário; as permissões do banco são a fronteira de acesso. Os endpoints de envio são públicos, como os formulários: para tráfego público intenso, monitore abuso e acrescente proteção contra automação conforme a operação exigir.
 
-O site continua demonstrativo, com `noindex/nofollow` e os avisos comerciais. A proteção de acesso configurada na Vercel deve ser preservada até o lançamento aprovado.
+Os textos de demonstração foram retirados da loja. O site ainda está com `noindex/nofollow` (não aparece no Google): para liberar a indexação, ajuste `src/app/robots.ts`, `metadata.robots` em `src/app/layout.tsx` e o cabeçalho `X-Robots-Tag` em `scripts/secure-export.mjs`.
 
 ## Onde editar
 
@@ -86,7 +93,7 @@ Antes de lançamento público, confirmar com a empresa:
 1. Telefone **+55 34 99649-3471** (informado no briefing; há outros números nas artes fornecidas).
 2. Perfil **@polpasbecal** e autorização para uso do nome, logotipo e fotografias.
 3. Sabores efetivamente vendidos, composição e alegação “100% fruta / natural”.
-4. Preço oficial, peso comercial e disponibilidade de cada item. **Todos os preços, unidades de 100 g e quantidades em estoque cadastrados são demonstrativos** e devem ser substituídos por contagens reais no painel. Tamarindo aparece esgotado apenas para demonstrar esse estado.
+4. Preço oficial, peso comercial e estoque de cada item: os valores iniciais vieram do catálogo de exemplo e devem ser conferidos no painel (Produtos → Editar e Movimentar → Contagem).
 5. Área de atendimento, entrega, retirada, pedido mínimo e condições de venda.
 6. Existência, aparência e estrutura da foodbike, cidades atendidas, equipe, duração e condições de contratação. A foto da foodbike foi fornecida para a apresentação e não substitui a confirmação da estrutura disponível.
 7. Razão social, CNPJ, endereço e responsável pelo tratamento, sem inventar esses dados.

@@ -66,7 +66,6 @@ export function Footer() {
         <span className="footer-title">Vamos conversar?</span>
         <a href={whatsappUrl("Olá, Polpas Becal! Gostaria de saber mais sobre as polpas e a foodbike.")} target="_blank" rel="noopener noreferrer"><MessageCircle size={17} /> {business.whatsapp}</a>
         <a href={business.instagram} target="_blank" rel="noopener noreferrer"><Camera size={17} /> {business.instagramHandle}</a>
-        <small>Contato informado no briefing, a confirmar.</small>
       </div>
     </div>
     <div className="container footer-bottom">

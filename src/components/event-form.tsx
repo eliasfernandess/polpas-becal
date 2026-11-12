@@ -3,19 +3,19 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ArrowLeft, ArrowRight, ArrowUpRight, BriefcaseBusiness, Cake, Check, CheckCircle2, GraduationCap, Heart, LockKeyhole, MessageCircle, Sparkles, type LucideIcon } from "lucide-react";
 import { saveEventRequest } from "@/lib/submissions";
 import { supabaseConfigured } from "@/lib/supabase";
-import { createEventSchema, durations, eventTypes, guestCounts, localToday } from "@/lib/validation";
+import { createEventSchema, durations, eventTypes, formatPhone, guestCounts, localToday } from "@/lib/validation";
 import { eventMessage, whatsappUrl } from "@/lib/whatsapp";
 
-type Field = "type" | "date" | "time" | "location" | "guests" | "duration" | "name" | "notes";
+type Field = "type" | "date" | "time" | "location" | "guests" | "duration" | "name" | "phone" | "notes";
 type Values = Record<Field, string>;
 type Errors = Partial<Record<Field, string>>;
 
-const empty: Values = { type: "", date: "", time: "", location: "", guests: "", duration: "", name: "", notes: "" };
+const empty: Values = { type: "", date: "", time: "", location: "", guests: "", duration: "", name: "", phone: "", notes: "" };
 const steps: { label: string; title: string; hint: string; fields: Field[] }[] = [
   { label: "Ocasião", title: "Qual é a ocasião?", hint: "Escolha a que mais se parece com o seu evento.", fields: ["type"] },
   { label: "Data e local", title: "Quando e onde vai ser?", hint: "Uma data aproximada já ajuda a consultar a agenda.", fields: ["date", "time", "location"] },
   { label: "Tamanho", title: "Para quantas pessoas?", hint: "Uma estimativa basta. Dá para ajustar depois.", fields: ["guests", "duration"] },
-  { label: "Você", title: "Como podemos chamar você?", hint: "É o nome que vai na mensagem para a equipe.", fields: ["name", "notes"] },
+  { label: "Você", title: "Como falamos com você?", hint: "Seu nome e um telefone para a equipe responder sobre o orçamento.", fields: ["name", "phone", "notes"] },
   { label: "Revisão", title: "Tudo certo?", hint: "Confira antes de abrir o WhatsApp. Nada é enviado sem você.", fields: [] },
 ];
 const last = steps.length - 1;
@@ -165,6 +165,7 @@ export function EventForm() {
 
     {step === 3 && <div className="form-grid">
       <div className="field full-field"><label htmlFor="name">Seu nome <span>*</span></label><input {...input("name")} onChange={e => set("name", e.target.value)} autoComplete="name" placeholder="Como podemos chamar você?" maxLength={80} required />{error("name")}</div>
+      <div className="field full-field"><label htmlFor="phone">Telefone com DDD <span>*</span></label><input {...input("phone")} onChange={e => set("phone", formatPhone(e.target.value))} type="tel" inputMode="tel" autoComplete="tel-national" placeholder="(34) 99999-0000" required />{error("phone")}</div>
       <div className="field full-field">
         <label htmlFor="notes">Algo mais que precisamos saber? <small>opcional</small></label>
         <textarea {...input("notes")} onChange={e => set("notes", e.target.value)} rows={3} maxLength={600} placeholder="Sabores preferidos, espaço coberto, tema da festa…" />
@@ -181,6 +182,7 @@ export function EventForm() {
           [1, "Onde", values.location],
           [2, "Convidados", [values.guests, values.duration].filter(Boolean).join(" · ")],
           [3, "Nome", values.name],
+          [3, "Telefone", values.phone],
           ...(values.notes.trim() ? [[3, "Observações", values.notes.trim()] as const] : []),
         ] as const).map(([target, label, value]) => <div key={label}>
           <dt>{label}</dt><dd>{value || "—"}</dd>

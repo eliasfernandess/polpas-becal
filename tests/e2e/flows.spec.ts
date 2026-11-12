@@ -30,6 +30,7 @@ async function fillQuote(page: Page, name = "João & Ana", location = "Salão S�
   await page.getByText("De 51 a 100", { exact: true }).click();
   await next.click();
   await page.getByLabel("Seu nome", { exact: false }).fill(name);
+  await page.getByLabel("Telefone com DDD").pressSequentially("34999990000");
   await next.click();
   await expect(page.getByRole("heading", { name: "Tudo certo?" })).toBeVisible();
 }
@@ -47,28 +48,86 @@ test("catálogo, carrinho persistente e mensagem de pedido", async ({ page, cont
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
   await expect(dialog.getByText("R$ 9,00", { exact: true }).first()).toBeVisible();
+  // Etapas: sacola → seus dados → entrega → confirmar (retirada não pede endereço).
+  await dialog.getByRole("button", { name: "Continuar", exact: true }).click();
+  await expect(dialog.getByRole("heading", { name: "Seus dados" })).toBeVisible();
+  await dialog.getByRole("button", { name: "Próximo" }).click();
+  await expect(dialog.getByText("Informe seu nome.")).toBeVisible();
+  await dialog.getByLabel("Seu nome").fill("Ana Cliente");
+  await dialog.getByLabel("Telefone com DDD").pressSequentially("34999990000");
+  await dialog.getByRole("button", { name: "Próximo" }).click();
+  await expect(dialog.getByRole("heading", { name: "Entrega ou retirada?" })).toBeVisible();
+  await dialog.getByRole("button", { name: "Próximo" }).click();
+  await expect(dialog.getByText("Escolha entrega ou retirada.")).toBeVisible();
+  await dialog.getByText("Vou retirar").click();
+  await dialog.getByRole("button", { name: "Próximo" }).click();
+  await expect(dialog.getByRole("heading", { name: "Confirme o pedido" })).toBeVisible();
+  await expect(dialog.getByText("Ana Cliente · (34) 99999-0000")).toBeVisible();
   if (supabaseMode) {
-    // Com banco, o pedido é registrado antes de abrir o WhatsApp, com itens e total conferíveis.
+    // Com banco, o pedido é registrado antes de abrir o WhatsApp, com itens, total e cliente.
     const orderRequest = page.waitForRequest(req => req.url().includes("/rest/v1/orders") && req.method() === "POST");
     await dialog.getByRole("button", { name: "Registrar pedido" }).click();
     const submitted = (await orderRequest).postDataJSON();
     expect(submitted.items).toEqual([{ id: "maracuja", quantity: 2 }]);
     expect(submitted.total_in_cents).toBe(900);
-    await expect(dialog.getByText("Pedido registrado.", { exact: false })).toBeVisible();
+    expect(submitted).toMatchObject({ customer_name: "Ana Cliente", customer_phone: "34999990000", fulfillment: "retirada", street: "" });
+    await expect(dialog.getByText("Pedido registrado!", { exact: false })).toBeVisible();
   }
   const link = dialog.getByRole("link", { name: "Continuar no WhatsApp" });
   const url = new URL((await link.getAttribute("href"))!);
   expect(url.host).toBe("wa.me"); expect(url.searchParams.get("text")).toContain("2x Polpa de Maracujá");
+  expect(url.searchParams.get("text")).toContain("Retirada no local");
+  expect(url.searchParams.get("text")).not.toMatch(/demonstrativ/i);
   if (supabaseMode) expect(url.searchParams.get("text")).toContain("Referência do pedido:");
   await context.route("https://wa.me/**", route => route.fulfill({ status: 200, contentType: "text/html", body: "<p>WhatsApp interceptado pelo teste.</p>" }));
   const [popup] = await Promise.all([context.waitForEvent("page"), link.click()]);
   await popup.waitForLoadState(); await popup.close();
+  await dialog.getByRole("button", { name: "Editar itens" }).click();
   await dialog.getByRole("button", { name: "Diminuir Maracujá", exact: true }).click();
   await expect(page.getByRole("button", { name: "Abrir carrinho, 1 itens" })).toBeVisible();
   await dialog.getByRole("button", { name: "Remover Maracujá", exact: true }).click();
   await expect(dialog.getByText("Tem espaço para muito sabor.")).toBeVisible();
   await page.keyboard.press("Escape"); await expect(dialog).not.toBeVisible();
   expect(failures).toEqual([]);
+});
+
+test("entrega pede endereço por etapas e vai na mensagem", async ({ page }) => {
+  await page.goto("/produtos/");
+  await page.getByRole("button", { name: "Adicionar 1 Morango ao carrinho" }).click();
+  await page.getByRole("button", { name: "Abrir carrinho, 1 itens" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("button", { name: "Continuar", exact: true }).click();
+  await dialog.getByLabel("Seu nome").fill("Bruno");
+  await dialog.getByLabel("Telefone com DDD").pressSequentially("3433334444");
+  await dialog.getByRole("button", { name: "Próximo" }).click();
+  await dialog.getByText("Entregar no meu endereço").click();
+  await dialog.getByRole("button", { name: "Próximo" }).click();
+  await expect(dialog.getByRole("heading", { name: "Onde entregar?" })).toBeVisible();
+  await dialog.getByRole("button", { name: "Próximo" }).click();
+  await expect(dialog.getByText("Informe o CEP com 8 números.")).toBeVisible();
+  await expect(dialog.getByLabel("CEP")).toBeFocused();
+  await dialog.getByLabel("CEP").pressSequentially("38400000");
+  await expect(dialog.getByLabel("CEP")).toHaveValue("38400-000");
+  await dialog.getByLabel("Número").fill("10");
+  await dialog.getByLabel("Rua ou avenida").fill("Rua das Frutas");
+  await dialog.getByLabel("Bairro").fill("Centro");
+  await dialog.getByLabel("Cidade").fill("Uberlândia");
+  await dialog.getByRole("button", { name: "Próximo" }).click();
+  await expect(dialog.getByText("Rua das Frutas, 10 — Centro, Uberlândia — CEP 38400-000")).toBeVisible();
+  // Voltar mantém o que foi digitado.
+  await dialog.getByRole("button", { name: "Editar entrega" }).click();
+  await expect(dialog.getByLabel("Rua ou avenida")).toHaveValue("Rua das Frutas");
+  await dialog.getByRole("button", { name: "Próximo" }).click();
+  if (supabaseMode) {
+    const orderRequest = page.waitForRequest(req => req.url().includes("/rest/v1/orders") && req.method() === "POST");
+    await dialog.getByRole("button", { name: "Registrar pedido" }).click();
+    expect((await orderRequest).postDataJSON()).toMatchObject({ fulfillment: "entrega", postal_code: "38400000", street: "Rua das Frutas", street_number: "10", district: "Centro", city: "Uberlândia", customer_phone: "3433334444" });
+  }
+  const text = new URL((await dialog.getByRole("link", { name: "Continuar no WhatsApp" }).getAttribute("href"))!).searchParams.get("text")!;
+  expect(text).toContain("Entrega: Rua das Frutas, 10 — Centro, Uberlândia — CEP 38400-000");
+  expect(text).toContain("Telefone: (34) 3333-4444");
+  // Dados pessoais não ficam no navegador.
+  expect(await page.evaluate(() => JSON.stringify({ ...localStorage, ...sessionStorage }))).not.toContain("Rua das Frutas");
 });
 
 test("orçamento por etapas, WhatsApp codificado e nada pessoal no navegador", async ({ page }) => {
@@ -94,8 +153,12 @@ test("orçamento por etapas, WhatsApp codificado e nada pessoal no navegador", a
   // Etapa 3: tamanho.
   await page.getByText("De 51 a 100", { exact: true }).click();
   await next.click();
-  // Etapa 4: contato.
+  // Etapa 4: contato, com telefone validado e formatado ao digitar.
   await page.getByLabel("Seu nome", { exact: false }).fill("João & Ana");
+  await next.click();
+  await expect(page.getByText("Informe o telefone com DDD", { exact: false })).toBeVisible();
+  await page.getByLabel("Telefone com DDD").pressSequentially("34999990000");
+  await expect(page.getByLabel("Telefone com DDD")).toHaveValue("(34) 99999-0000");
   await next.click();
   // Revisão: permite voltar a uma etapa e manter o que foi preenchido.
   await expect(page.getByRole("heading", { name: "Tudo certo?" })).toBeVisible();
@@ -120,6 +183,7 @@ test("orçamento por etapas, WhatsApp codificado e nada pessoal no navegador", a
   expect(url.searchParams.get("text")).toContain("João & Ana");
   expect(url.searchParams.get("text")).toContain("20/12/2099");
   expect(url.searchParams.get("text")).toContain("Salão São José");
+  expect(url.searchParams.get("text")).toContain("Telefone: (34) 99999-0000");
   const saved = await page.evaluate(() => JSON.stringify({ ...localStorage, ...sessionStorage }));
   expect(saved).not.toContain("João"); expect(saved).not.toContain("Salão");
   await expect(page.locator(".form-review")).toContainText("João & Ana");

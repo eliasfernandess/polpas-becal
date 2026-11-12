@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { ProductCatalog } from "@/components/products";
 
-export const metadata: Metadata = { title: "Nossas polpas", description: "Explore os sabores no catálogo demonstrativo da Polpas Becal, escolha quantidades e monte seu pedido pelo WhatsApp." };
+export const metadata: Metadata = { title: "Nossas polpas", description: "Escolha seus sabores de polpa de fruta Polpas Becal, monte o pedido e receba em casa ou retire." };
 
 export default function ProductsPage() {
   return <main id="conteudo">
@@ -12,7 +12,6 @@ export default function ProductsPage() {
     </section>
     <section className="container catalog" aria-label="Catálogo de polpas">
       <ProductCatalog />
-      <p className="demo-note">Catálogo demonstrativo: todos os preços, unidades e disponibilidades precisam de confirmação comercial.</p>
     </section>
     <section className="catalog-help container" data-reveal>
       <h2>Ficou com vontade de criar uma combinação?</h2>

@@ -28,3 +28,13 @@ Mesclagem de `codex/mobile-tres-produtos` com o novo visual, o painel `/admin/` 
 - Cabeçalho e rodapé em verde escuro (#17301f); carrinho em amarelo; cabeçalho encolhe com sombra ao rolar.
 - Animações: entrada das seções e dos cards ao rolar (em cascata), abertura da página inicial, polpas flutuando, etapas do orçamento deslizando, contador do carrinho e ícones reagindo ao toque. Nada fica escondido sem JavaScript, e tudo é desligado com "reduzir movimento".
 - 110 testes unitários; E2E aprovados nos dois modos (16 sem Supabase, 18 com Supabase simulado). Capturas conferidas em desktop e celular, incluindo que nenhum elemento animado fica invisível após rolar a página.
+
+# Checkout com dados do cliente, painel redesenhado e pedidos — 14/11/2026
+
+- Erro "column products.sort does not exist" do painel corrigido (ordenação por `sort_order`).
+- Checkout em etapas com nome, telefone e endereço; orçamento da foodbike com telefone. Textos de demonstração removidos da loja.
+- Painel redesenhado (menu lateral, Início, Pedidos, Orçamentos, Produtos, Movimentações, Equipe); confirmação de pedido baixa o estoque via `confirm_order`.
+- Home com as fotos novas (vertical no computador, horizontal no celular).
+- As três migrações e os testes `access.sql`, `painel.sql` e `pedidos.sql` executados em Postgres embutido (PGlite); unitários e E2E aprovados nos dois modos. Capturas conferidas, incluindo o painel com pedidos de exemplo.
+- Não reproduzido: carrinho em branco relatado (Chrome, WebKit e iPhone simulado exibiram normalmente, local e em produção).
+- **Pendente no Supabase real:** aplicar `20261114120000_pedidos_clientes.sql`.

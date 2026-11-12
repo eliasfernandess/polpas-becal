@@ -4,7 +4,6 @@ export const business = {
   whatsappConfirmed: false,
   instagram: "https://www.instagram.com/polpasbecal/",
   instagramHandle: "@polpasbecal",
-  demo: true,
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL || "https://polpas-becal.vercel.app",
 } as const;
 

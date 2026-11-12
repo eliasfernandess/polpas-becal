@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { createEventSchema, isCalendarDate, localToday } from "@/lib/validation";
 const schema = createEventSchema("2026-10-20");
-const valid = { name: "Maria", type: "Aniversário", date: "2026-10-20", guests: "Até 50", location: "Salão Primavera" };
+const valid = { name: "Maria", phone: "(34) 99999-0000", type: "Aniversário", date: "2026-10-20", guests: "Até 50", location: "Salão Primavera" };
 describe("formulário de evento", () => {
   it("aceita hoje sem opcionais", () => expect(schema.safeParse(valid).success).toBe(true));
   it("remove espaços e preenche opcionais com strings vazias", () => { const result = schema.parse({ ...valid, name: "  Maria  " }); expect(result.name).toBe("Maria"); expect(result.notes).toBe(""); });

@@ -1,7 +1,43 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-export const metadata: Metadata = { title: "Política de privacidade", description: "Como a vitrine demonstrativa Polpas Becal utiliza os dados do formulário e o armazenamento local do carrinho." };
-export default function PrivacyPage() {
-  return <main id="conteudo" className="legal-page container"><span className="eyebrow">TRANSPARÊNCIA EM CADA DETALHE</span><h1>Política de<br /><em>privacidade.</em></h1><p className="legal-intro">Versão inicial para demonstração. Revisão comercial e jurídica necessária antes da publicação pública.</p><section><h2>1. Quem é responsável</h2><p>Esta vitrine apresenta a marca Polpas Becal. Razão social, CNPJ, endereço e identificação do responsável pelo tratamento ainda precisam ser fornecidos e confirmados pela empresa. Estes dados não foram presumidos no protótipo.</p></section><section><h2>2. Dados e finalidade</h2><p>O formulário utiliza nome, informações do evento, data, local, estimativa de convidados e detalhes opcionais para preparar uma solicitação de orçamento. Não solicitamos documentos, dados bancários ou cadastro de clientes. Evite inserir dados sensíveis nas observações.</p></section><section><h2>3. Como funciona o WhatsApp</h2><p>O navegador monta um link oficial para o WhatsApp com a mensagem preenchida. Ao registrar um pedido ou solicitar um orçamento, o site salva os dados no banco de atendimento da Polpas Becal, hospedado no Supabase. Esse registro não confirma compra nem reserva. Ao abrir o link, o conteúdo será encaminhado ao serviço WhatsApp/Meta; a empresa recebe a mensagem quando você a enviar. O tratamento posterior seguirá também as práticas da empresa e os termos do WhatsApp.</p><p><a href="https://www.whatsapp.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer">Consulte a política de privacidade do WhatsApp.</a></p></section><section><h2>4. Armazenamento no navegador</h2><p>Guardamos apenas identificadores dos produtos e quantidades do carrinho na chave local “becal:cart:v1”, para manter sua seleção ao atualizar a página. Antes de enviar, os dados do formulário ficam somente na memória da página. Ao solicitar o orçamento, nome e detalhes do evento são gravados no Supabase; os campos não são salvos em localStorage ou sessionStorage. Pedidos registram produtos, quantidades e preços estimados. O acesso aos registros fica restrito à administração. Para apagar o carrinho, remova os itens ou limpe os dados do site no navegador.</p></section><section><h2>5. Hospedagem e outros serviços</h2><p>As imagens e fontes são servidas pela própria hospedagem. Não incluímos analytics, pixels de marketing, embeds sociais ou cookies de rastreamento da aplicação. Links para Instagram e WhatsApp só direcionam a esses serviços quando acionados. A infraestrutura de hospedagem poderá processar dados técnicos de acesso, como IP e horário, para disponibilização e segurança. A Vercel hospeda o site e o Supabase armazena o catálogo e os registros de atendimento em São Paulo. A empresa deve definir prazos de retenção e excluir dados que deixarem de ser necessários.</p></section><section><h2>6. Seus direitos e contato</h2><p>Conforme aplicável à LGPD, você pode solicitar informações sobre o tratamento e exercer direitos de acesso, correção, eliminação e demais direitos previstos na lei. O contato informado para a Polpas Becal é +55 34 99649-3471, ainda sujeito à confirmação comercial. A empresa deverá definir o canal oficial de privacidade e suas rotinas de atendimento antes do lançamento.</p><p><a href="https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm" target="_blank" rel="noopener noreferrer">Lei Geral de Proteção de Dados Pessoais — Lei nº 13.709/2018.</a></p></section><section><h2>7. Validação desta versão</h2><p>Este documento descreve o comportamento deste protótipo. Deve ser revisado para refletir a hospedagem definitiva e as práticas reais de atendimento, retenção e compartilhamento da empresa. Ele não representa uma declaração de conformidade absoluta.</p></section><Link className="text-link" href="/">Voltar para o início ↗</Link></main>;
-}
+import { business } from "@/data/business";
 
+export const metadata: Metadata = { title: "Política de privacidade", description: "Como a Polpas Becal usa os dados informados em pedidos e orçamentos." };
+
+export default function PrivacyPage() {
+  return <main id="conteudo" className="legal-page container">
+    <span className="eyebrow">Transparência em cada detalhe</span>
+    <h1>Política de <em>privacidade.</em></h1>
+    <p className="legal-intro">Usamos os seus dados só para atender o seu pedido ou orçamento. Nada de anúncios, rastreadores ou venda de dados.</p>
+    <section>
+      <h2>1. Quem cuida dos seus dados</h2>
+      <p>A Polpas Becal é a responsável pelos dados informados neste site. Fale com a gente pelo WhatsApp {business.whatsapp}.</p>
+    </section>
+    <section>
+      <h2>2. Que dados usamos e para quê</h2>
+      <p><strong>Pedidos:</strong> nome, telefone, forma de recebimento, endereço de entrega (quando houver), sabores, quantidades e valores. Servem para confirmar o pedido e combinar pagamento e entrega ou retirada.</p>
+      <p><strong>Orçamentos da foodbike:</strong> nome, telefone, tipo, data, horário, local, número de convidados, duração e observações do evento. Servem para preparar e enviar o orçamento.</p>
+      <p>Não pedimos documentos nem dados bancários. Evite colocar informações sensíveis nas observações.</p>
+    </section>
+    <section>
+      <h2>3. Onde ficam guardados</h2>
+      <p>Ao registrar um pedido ou orçamento, os dados são gravados no banco de atendimento da Polpas Becal, hospedado no Supabase, em São Paulo. Só a nossa equipe tem acesso. O site é hospedado na Vercel, que pode registrar dados técnicos de acesso, como IP e horário, para segurança.</p>
+      <p>Guardamos os registros pelo tempo necessário para o atendimento e para cumprir obrigações legais.</p>
+    </section>
+    <section>
+      <h2>4. WhatsApp</h2>
+      <p>Depois de registrar, o site abre o WhatsApp com a mensagem pronta. Ao enviar, o conteúdo passa pelo serviço do WhatsApp/Meta e segue também as regras dele.</p>
+      <p><a href="https://www.whatsapp.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer">Política de privacidade do WhatsApp</a></p>
+    </section>
+    <section>
+      <h2>5. No seu navegador</h2>
+      <p>O carrinho guarda só os sabores e as quantidades escolhidos (chave “becal:cart:v1”), para não se perder ao atualizar a página. Nome, telefone e endereço não ficam salvos no navegador. Para apagar o carrinho, remova os itens ou limpe os dados do site.</p>
+    </section>
+    <section>
+      <h2>6. Seus direitos</h2>
+      <p>Pela Lei Geral de Proteção de Dados, você pode pedir acesso, correção ou exclusão dos seus dados, entre outros direitos. Basta falar com a gente pelo WhatsApp.</p>
+      <p><a href="https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm" target="_blank" rel="noopener noreferrer">Lei nº 13.709/2018 (LGPD)</a></p>
+    </section>
+    <Link className="text-link" href="/">Voltar para o início</Link>
+  </main>;
+}

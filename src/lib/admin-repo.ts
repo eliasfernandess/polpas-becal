@@ -3,7 +3,7 @@ import { z } from "zod";
 import { seedProducts, toProduct } from "@/data/products";
 import { fromRow, parseProducts, PRODUCT_COLUMNS, productSchema, readLocalCatalog, sortProducts, toData, toRow, writeLocalCatalog, type ProductRow } from "@/lib/catalog";
 import { supabaseConfig } from "@/lib/supabase";
-import type { CartItem, Product, ProductData, Role, StockMovement, Team, TeamInvite } from "@/types/product";
+import type { CartItem, OrderRecord, OrderStatus, Product, ProductData, QuoteRecord, QuoteStatus, Role, StockMovement, Team, TeamInvite } from "@/types/product";
 
 export const inviteSchema = z.object({
   email: z.string().trim().toLowerCase().max(120, "Use no máximo 120 caracteres.").regex(/^[^@\s]+@[^@\s]+\.[^@\s]+$/, "Informe um e-mail válido."),
@@ -35,6 +35,14 @@ export interface AdminRepo {
   removeMember(memberId: string): Promise<void>;
   /** Troca a senha da conta atual. `null` quando não há conta (demonstração). */
   changePassword: ((password: string) => Promise<void>) | null;
+  /** Pedidos e orçamentos só existem com o Supabase (a loja registra no banco). */
+  records: boolean;
+  orders(): Promise<OrderRecord[]>;
+  /** Novo, em contato ou cancelado. "Confirmado" só por confirmOrder, que baixa o estoque. */
+  setOrderStatus(id: string, status: Exclude<OrderStatus, "confirmed">): Promise<void>;
+  confirmOrder(id: string): Promise<void>;
+  quotes(): Promise<QuoteRecord[]>;
+  setQuoteStatus(id: string, status: QuoteStatus): Promise<void>;
 }
 
 const validate = (data: ProductData) => productSchema.parse(data);
@@ -144,6 +152,12 @@ export function createLocalRepo(): AdminRepo {
     setRole: demoOnly,
     removeMember: demoOnly,
     changePassword: null,
+    records: false,
+    async orders() { return []; },
+    setOrderStatus: demoOnly,
+    confirmOrder: demoOnly,
+    async quotes() { return []; },
+    setQuoteStatus: demoOnly,
   };
 }
 
@@ -163,6 +177,16 @@ const friendly = (error: { message: string; code?: string }, duplicate = "Já ex
   if (error.code === "42501") return new Error("Sua conta não tem permissão para isso.");
   return new Error(error.message || "Não foi possível concluir a operação.");
 };
+const outdated = () => new Error("O banco ainda não tem a migração de pedidos (supabase/migrations/20261114120000_pedidos_clientes.sql). Aplique-a para ver pedidos e orçamentos.");
+interface OrderRow {
+  id: string; created_at: string; status: OrderStatus; items: OrderRecord["items"]; total_in_cents: number | string;
+  customer_name: string; customer_phone: string; fulfillment: OrderRecord["fulfillment"];
+  postal_code: string; street: string; street_number: string; complement: string; district: string; city: string;
+}
+interface QuoteRow {
+  id: string; created_at: string; status: QuoteStatus; name: string; customer_phone: string; event_type: string;
+  event_date: string; event_time: string | null; guests: string; location: string; duration: string; notes: string;
+}
 const stockError = (error: { message: string; code?: string }) => error.code === "23514" ? new Error("A saída é maior que o estoque disponível.") : friendly(error);
 
 export function createSupabaseRepo(client: SupabaseClient, me: { id: string; role: Role }): AdminRepo {
@@ -171,7 +195,7 @@ export function createSupabaseRepo(client: SupabaseClient, me: { id: string; rol
     mode: "supabase",
     role: me.role,
     async list() {
-      const { data, error } = await client.from("products").select(PRODUCT_COLUMNS).order("sort").order("name");
+      const { data, error } = await client.from("products").select(PRODUCT_COLUMNS).order("sort_order").order("name");
       if (error) throw friendly(error);
       return parseProducts((data as ProductRow[]).map(fromRow));
     },
@@ -249,6 +273,42 @@ export function createSupabaseRepo(client: SupabaseClient, me: { id: string; rol
       const { data, error } = await client.from("admins").delete().eq("user_id", memberId).select("user_id");
       if (error) throw friendly(error);
       if (!data?.length) throw new Error("Não foi possível remover esta conta.");
+    },
+    records: true,
+    async orders() {
+      const { data, error } = await client.from("orders")
+        .select("id,created_at,status,items,total_in_cents,customer_name,customer_phone,fulfillment,postal_code,street,street_number,complement,district,city")
+        .order("created_at", { ascending: false }).limit(300);
+      if (error) throw error.code === "42703" ? outdated() : friendly(error);
+      return (data as OrderRow[]).map(row => ({
+        id: row.id, createdAt: row.created_at, status: row.status, totalInCents: Number(row.total_in_cents),
+        items: Array.isArray(row.items) ? row.items : [],
+        customerName: row.customer_name, customerPhone: row.customer_phone, fulfillment: row.fulfillment,
+        address: { postalCode: row.postal_code, street: row.street, number: row.street_number, complement: row.complement, district: row.district, city: row.city },
+      }));
+    },
+    async setOrderStatus(id, status) {
+      const { data, error } = await client.from("orders").update({ status }).eq("id", id).select("id");
+      if (error) throw friendly(error);
+      if (!data?.length) throw new Error("Este pedido não pode mais ser alterado.");
+    },
+    async confirmOrder(id) {
+      const { error } = await client.rpc("confirm_order", { p_order_id: id });
+      if (error) throw error.code === "23514" ? new Error("Falta estoque para confirmar este pedido. Registre uma entrada e tente de novo.") : friendly(error);
+    },
+    async quotes() {
+      const { data, error } = await client.from("event_requests")
+        .select("id,created_at,status,name,customer_phone,event_type,event_date,event_time,guests,location,duration,notes")
+        .order("created_at", { ascending: false }).limit(300);
+      if (error) throw error.code === "42703" ? outdated() : friendly(error);
+      return (data as QuoteRow[]).map(row => ({
+        id: row.id, createdAt: row.created_at, status: row.status, name: row.name, phone: row.customer_phone, type: row.event_type,
+        date: row.event_date, time: row.event_time?.slice(0, 5) ?? "", guests: row.guests, location: row.location, duration: row.duration, notes: row.notes,
+      }));
+    },
+    async setQuoteStatus(id, status) {
+      const { error } = await client.from("event_requests").update({ status }).eq("id", id);
+      if (error) throw friendly(error);
     },
     async changePassword(password) {
       const { error } = await client.auth.updateUser({ password });
