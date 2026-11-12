@@ -5,7 +5,7 @@ import { ALL_CATEGORIES, categoriesOf } from "@/data/products";
 import { maxQuantityFor } from "@/lib/cart";
 import { money } from "@/lib/money";
 import { useCart } from "@/store/cart-store";
-import { useCatalog } from "@/store/catalog-store";
+import { CatalogStatus, useCatalog } from "@/store/catalog-store";
 import type { Product } from "@/types/product";
 
 export function ProductCard({ product }: { product: Product }) {
@@ -53,7 +53,8 @@ export function ProductCard({ product }: { product: Product }) {
 }
 
 export function FeaturedProducts() {
-  const { products } = useCatalog();
+  const { products, loading, error } = useCatalog();
+  if (loading || error) return <CatalogStatus />;
   const visible = products.filter(p => p.active);
   const featured = visible.filter(p => p.featured);
   return <div className="product-grid is-featured">{(featured.length ? featured : visible).slice(0, 4).map(p => <ProductCard key={p.id} product={p} />)}</div>;
@@ -62,13 +63,14 @@ export function FeaturedProducts() {
 const normalize = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
 export function ProductCatalog() {
-  const { products } = useCatalog();
+  const { products, loading, error } = useCatalog();
   const visible = products.filter(p => p.active);
   const categories = categoriesOf(visible);
   const [search, setSearch] = useState("");
   const [picked, setPicked] = useState(ALL_CATEGORIES);
   const category = categories.includes(picked) ? picked : ALL_CATEGORIES;
   const filtered = visible.filter(p => (category === ALL_CATEGORIES || p.category === category) && normalize(p.name).includes(normalize(search)));
+  if (loading || error) return <CatalogStatus />;
   return <>
     <div className="catalog-toolbar">
       <div className="filter-tabs" role="group" aria-label="Filtrar por categoria">

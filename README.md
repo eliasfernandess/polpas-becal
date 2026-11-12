@@ -1,72 +1,56 @@
 # Polpas Becal
 
-Vitrine comercial demonstrativa com painel de estoque, construída com Next.js 16, React 19, TypeScript estrito, Tailwind CSS 4, Lucide e Zod. Exportação estática, sem servidor de aplicação próprio, cadastro de clientes ou pagamentos. Catálogo, estoque e login do administrador ficam no Supabase (opcional: sem ele, o painel roda em modo demonstração).
+Vitrine Next.js 16 / React 19 com catálogo, pedidos e orçamentos no Supabase, painel de estoque em `/admin/` e hospedagem estática na Vercel. No celular, o catálogo mostra três produtos por linha.
+
+## Executar
+
+Node.js 24 e npm. Execute `npm ci`, copie `.env.example` para `.env.local` e configure a URL do projeto e a chave **publishable** do Supabase. Nunca use `service_role` ou `sb_secret` no navegador. Depois, `npm run dev` ou `npm run build` seguido de `npm run preview`.
+
+Sem as duas variáveis do Supabase, tudo roda em **modo demonstração**: a loja usa `src/data/products.ts`, os pedidos vão direto para o WhatsApp sem gravar nada e o painel abre sem login, guardando as alterações só naquele navegador. Deploys na Vercel exigem as variáveis e falham se elas faltarem. Com Supabase configurado, uma falha de conexão mostra erro: a loja nunca volta silenciosamente aos preços demonstrativos.
+
+## Integração
+
+- Vercel: projeto `polpas-becal`, conectado a `eliasfernandess/polpas-becal`; Node 24; build `npm run build`.
+- Supabase: projeto `polpas-becal` (`zcxojunqupnpujhhplnb`), região São Paulo (`sa-east-1`).
+- Variáveis públicas: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SITE_URL`.
+- Migrações versionadas em `supabase/migrations/`, aplicadas em ordem:
+  1. `20261112150046_catalog_orders_quotes.sql`: catálogo, pedidos e orçamentos.
+  2. `20261113120000_painel_estoque_equipe.sql`: estoque, movimentações, vendas, equipe, convites e fotos. Acrescenta colunas e permissões **sem recriar tabelas nem apagar dados**, e lança um estoque inicial demonstrativo nos dez sabores.
+- Para aplicar: `npx supabase link --project-ref zcxojunqupnpujhhplnb` (uma vez) e `npx supabase db push`. Até a segunda migração ser aplicada, a loja continua vendendo como antes, sem limite de estoque, e o painel avisa que o banco está desatualizado.
+- `products`: visitantes leem só o que está à venda (`available`); a equipe vê também os ocultos. Só administradores criam e editam produtos. O estoque (`stock`) não pode ser gravado diretamente: só muda pelas funções `adjust_stock` e `record_sale`, que registram cada movimentação.
+- `orders`: visitantes podem inserir apenas ID aleatório, itens e total estimado. Um trigger verifica disponibilidade, **estoque** e quantidades, recalcula o total e grava um retrato dos produtos e preços. O cliente não pode ler, alterar ou excluir pedidos, nem definir o status. Um pedido é só uma intenção: quem baixa o estoque é a venda registrada no painel.
+- `event_requests`: visitantes podem inserir somente os campos do orçamento. O banco verifica campos obrigatórios, limites, opções e data.
+- O estado inicial de pedidos e orçamentos é `pending_whatsapp`. A equipe acompanha os registros no Table Editor do Supabase e atualiza o status após o contato. Não há confirmação automática de compra, pagamento ou reserva.
+- Repetir uma tentativa de envio na mesma página reutiliza o UUID, evitando duplicação caso a resposta se perca. Ao alterar os dados, uma nova solicitação é criada.
 
 ## Painel administrativo (/admin/)
 
-Em `/admin/` é possível criar, editar, ocultar e excluir produtos, enviar fotos, definir preço, destaque e alerta de estoque baixo, e lançar **entradas, saídas e contagens** de estoque. Toda alteração de saldo vira uma linha em *Movimentações*. A loja reflete o estoque: produto zerado aparece como "Esgotado", estoque baixo mostra "Últimas N un." e o carrinho não aceita mais unidades do que há em estoque. O pedido continua sendo fechado pelo WhatsApp, então **a venda não baixa o estoque sozinha**: registre a saída no painel.
+Quatro abas:
 
-O painel tem quatro abas:
-
-- **Visão geral:** o que repor primeiro, vendas, entradas e saídas dos últimos 30 dias, sabores mais vendidos e atividade recente. O valor das vendas é uma estimativa a preço atual de catálogo (o preço da época não é guardado).
-- **Produtos:** cadastro, busca, filtros e exportação do estoque em CSV.
-- **Movimentações:** histórico com busca, filtros (entradas, saídas, vendas), quem registrou e exportação em CSV.
+- **Visão geral:** o que repor primeiro, vendas, entradas e saídas dos últimos 30 dias, sabores mais vendidos e atividade recente. O valor das vendas é estimado a preço atual de catálogo.
+- **Produtos:** cadastro com foto, preço, categoria, cor, destaque e alerta de estoque baixo; ocultar, excluir, movimentar (entrada, saída, contagem) e exportar CSV.
+- **Movimentações:** histórico com busca, filtros, autoria e exportação CSV.
 - **Equipe** (só administradores): contas, funções e convites.
 
-**Registrar venda** baixa vários sabores de uma vez: ou todos os itens saem do estoque, ou nenhum.
+**Registrar venda** baixa vários sabores de uma vez. Como o pedido é fechado pelo WhatsApp, registre a venda no painel ao confirmá-la.
 
 ### Contas e funções
 
 | Função | Pode |
 | --- | --- |
-| Administrador | Tudo: produtos, preços, fotos, estoque, vendas, equipe |
+| Administrador | Tudo: produtos, preços, fotos, estoque, vendas e equipe |
 | Estoque | Consultar o painel e lançar entradas, saídas, contagens e vendas |
 
-Para dar acesso a alguém, um administrador abre **Equipe → Convidar pessoa** e informa nome, e-mail e função. O painel **não envia e-mail**: avise a pessoa para abrir `/admin/`, escolher “Recebi um convite” e criar a senha dela com o mesmo e-mail. Ao confirmar o e-mail e entrar, ela passa a fazer parte da equipe. Ninguém além da própria pessoa conhece a senha. Um administrador pode trocar a função ou remover o acesso de qualquer outra conta, mas não a própria (para a loja nunca ficar sem administrador por engano). “Esqueci a senha” e “Minha conta” cobrem a troca de senha.
+Primeiro administrador: crie o usuário em **Authentication → Users → Add user** e execute no SQL Editor, trocando e-mail e nome:
 
-Para isso funcionar, mantenha no Supabase o cadastro por e-mail **habilitado** e **Confirm email ligado** (Authentication → Sign In / Providers): é a confirmação do e-mail que garante que só o dono do endereço convidado entra. Contas criadas sem convite ficam sem acesso a nada. Em Authentication → URL Configuration, inclua o endereço do site com `/admin/` nas URLs de redirecionamento.
-
-### Modo demonstração (padrão)
-
-Sem as variáveis do Supabase, o painel abre sem login e grava tudo no `localStorage` do navegador (chaves `becal:catalog:v1` e `becal:team:v1`). Os convites da aba Equipe são apenas simulados. Serve para apresentar o fluxo: as alterações aparecem na loja **apenas naquele navegador**.
-
-### Publicar com Supabase
-
-1. Crie um projeto gratuito em https://supabase.com.
-2. No **SQL Editor**, cole e execute o conteúdo de `supabase/schema.sql` (tabelas, políticas de acesso, função de movimentação, bucket de fotos e os dez sabores iniciais).
-3. Em **Authentication → Users → Add user**, crie o primeiro administrador (e-mail e senha).
-4. De volta ao SQL Editor, autorize esse usuário, trocando o e-mail e o nome:
-   ```sql
-   insert into public.admins (user_id, email, name, role)
-   select id, lower(email), 'Seu nome', 'admin' from auth.users where email = 'voce@exemplo.com';
-   ```
-   As demais contas são criadas por convite, pela aba Equipe.
-5. Copie `.env.example` para `.env.local` e preencha `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` (Project Settings → API). Na Vercel/Cloudflare, cadastre as mesmas variáveis no projeto.
-6. Refaça o build. O script de exportação libera o endereço do Supabase na CSP automaticamente.
-
-A chave `anon` é pública por natureza. A proteção está nas políticas (RLS) do `schema.sql`: visitantes só leem produtos ativos; só a equipe (`public.admins`) movimenta estoque e só administradores alteram produtos e equipe. Se o banco foi criado com uma versão anterior do `schema.sql`, execute o arquivo de novo: ele atualiza sem apagar dados. Nunca use a chave `service_role` no site.
-
-Limites conhecidos: a loja mostra o catálogo inicial (`src/data/products.ts`) por um instante até a resposta do Supabase chegar, e continua com ele se a consulta falhar.
-
-## Executar
-
-Requisitos: Node.js 22 ou superior e npm.
-
-```sh
-npm ci
-npm run dev
+```sql
+insert into public.admins (user_id, email, name, role)
+select id, lower(email), 'Seu nome', 'admin' from auth.users where email = 'voce@exemplo.com';
 ```
 
-Abra http://127.0.0.1:3000. Para conferir o comportamento e os cabeçalhos de **produção**:
+Os demais entram por convite: o administrador abre **Equipe → Convidar pessoa** com nome, e-mail e função. O painel **não envia e-mail**: avise a pessoa para abrir `/admin/`, escolher “Recebi um convite” e criar a própria senha com o mesmo e-mail. Ela entra na equipe ao confirmar o e-mail e fazer login. Mantenha o cadastro por e-mail habilitado e **Confirm email** ligado (Authentication → Sign In / Providers), e inclua `https://<domínio>/admin/` nas URLs de redirecionamento (Authentication → URL Configuration). Contas criadas sem convite não acessam nada. Um administrador não altera nem remove a própria conta.
 
-```sh
-npm run build
-npm run preview
-```
-
-O diretório public já inclui todas as imagens otimizadas e fontes locais; os arquivos originais do Downloads não são necessários para executar ou publicar.
-
-## Verificações
+## Verificar
 
 ```sh
 npm run lint
@@ -74,41 +58,26 @@ npm run typecheck
 npm test
 npm run build
 npm run test:e2e
-npm audit
 ```
 
-Os testes E2E usam o Google Chrome instalado. Caso não esteja instalado, instale o navegador pelo canal oficial ou ajuste playwright.config.ts para utilizar o Chromium do Playwright. Os testes usam dois perfis (desktop e celular), interceptam o WhatsApp e não enviam mensagens reais. Build é necessário antes dos testes E2E.
+Os testes E2E usam Chrome e se adaptam ao build: sem Supabase, cobrem o modo demonstração e o painel; com Supabase, interceptam todas as chamadas ao banco (nenhum pedido fictício é criado) e cobrem registro, falhas, retentativa e banco sem a migração de estoque. Testes SQL transacionais ficam em `supabase/tests/` e fazem rollback: `access.sql` (loja) e `painel.sql` (equipe, funções, convites, estoque e vendas).
 
-As capturas opcionais são habilitadas pela variável SITE_PREVIEW_DIR apontando para um diretório de saída. A suíte normal ignora apenas os testes de captura, mantendo os oito cenários funcionais.
+## Hospedagem e segurança
 
-## Experiência implementada
+O build exporta `out/` e calcula hashes CSP dos scripts inline. A CSP permite conexão e imagens somente da própria origem e do projeto Supabase configurado. Na Vercel, o Build Output API publica arquivos e cabeçalhos gerados **no mesmo build**, evitando hashes antigos. `out/_headers` e `out/.security-headers.json` atendem outras hospedagens e o preview local.
 
-- Início com identidade da marca, fotografias fornecidas, produtos em destaque e apresentação da foodbike.
-- Catálogo de dez sabores com busca sem distinção de acentos, filtros, quantidades e indisponibilidade.
-- Carrinho em diálogo nativo com retenção de foco, Escape, persistência e atualização entre abas.
-- Total calculado em centavos pelo catálogo atual. Armazenamento contém somente identificadores e quantidades; preços adulterados e itens desconhecidos são descartados.
-- Pedido pelo link oficial wa.me: unidade, valor unitário, quantidade, subtotal, total estimado e pedido de confirmação.
-- Página de eventos com orçamento em cinco etapas (ocasião, data e local, tamanho, contato, revisão), validado com Zod a cada etapa, com retorno a etapas anteriores sem perder o que foi preenchido.
-- WhatsApp aberto com a solicitação preenchida; fallback de link caso o navegador bloqueie a janela. Não há confirmação automática de envio, compra ou reserva.
-- Termos, privacidade, 404, metadados, imagem social, sitemap e robots. A demonstração usa noindex/nofollow.
+RLS está habilitado em todas as tabelas públicas. A chave publishable identifica o projeto, não um usuário; as permissões do banco são a fronteira de acesso. Os endpoints de envio são públicos, como os formulários: para tráfego público intenso, monitore abuso e acrescente proteção contra automação conforme a operação exigir.
 
-Rotas: /, /produtos/, /eventos/, /privacidade/, /termos/ e /admin/ (painel).
+O site continua demonstrativo, com `noindex/nofollow` e os avisos comerciais. A proteção de acesso configurada na Vercel deve ser preservada até o lançamento aprovado.
 
 ## Onde editar
 
-| Conteúdo | Arquivo |
-| --- | --- |
-| Produtos, preços, fotos, destaque e estoque | Painel em /admin/ (catálogo inicial em src/data/products.ts e supabase/schema.sql) |
-| Regras do catálogo, validação de produto e leitura do Supabase | src/lib/catalog.ts e src/lib/admin-repo.ts |
-| Telas do painel | src/components/admin/ e src/app/admin/admin.css |
-| Número do WhatsApp, Instagram e origem do site | src/data/business.ts |
-| Validação de orçamento, limites de texto e opções | src/lib/validation.ts |
-| Mensagens e validação do destino wa.me | src/lib/whatsapp.ts |
-| Regras de carrinho e persistência | src/lib/cart.ts e src/store/cart-store.tsx |
-| Cores, tipografia e responsividade | src/app/globals.css |
-| Fotografias, marca e arte de eventos | public/images/ |
-
-O arquivo .env.example contém apenas a origem pública opcional NEXT_PUBLIC_SITE_URL. Não são necessários segredos.
+- Layout e responsividade: `src/app/globals.css` (loja) e `src/app/admin/admin.css` (painel).
+- Catálogo, preços e estoque em produção: painel `/admin/` (tabela `public.products`).
+- Telefone, Instagram e origem: `src/data/business.ts`.
+- Validações do formulário: `src/lib/validation.ts`; limites também estão nas migrações.
+- Conexão e gravações: `src/lib/supabase.ts`, `src/lib/submissions.ts`, `src/lib/catalog.ts` e `src/lib/admin-repo.ts`.
+- Estado do catálogo e do carrinho: `src/store/`.
 
 ## Informações comerciais pendentes
 
@@ -117,7 +86,7 @@ Antes de lançamento público, confirmar com a empresa:
 1. Telefone **+55 34 99649-3471** (informado no briefing; há outros números nas artes fornecidas).
 2. Perfil **@polpasbecal** e autorização para uso do nome, logotipo e fotografias.
 3. Sabores efetivamente vendidos, composição e alegação “100% fruta / natural”.
-4. Preço oficial, peso comercial e disponibilidade de cada item. **Todos os preços, unidades de 100 g e estados de disponibilidade cadastrados são demonstrativos.** Tamarindo aparece indisponível apenas para demonstrar esse estado.
+4. Preço oficial, peso comercial e disponibilidade de cada item. **Todos os preços, unidades de 100 g e quantidades em estoque cadastrados são demonstrativos** e devem ser substituídos por contagens reais no painel. Tamarindo aparece esgotado apenas para demonstrar esse estado.
 5. Área de atendimento, entrega, retirada, pedido mínimo e condições de venda.
 6. Existência, aparência e estrutura da foodbike, cidades atendidas, equipe, duração e condições de contratação. A foto da foodbike foi fornecida para a apresentação e não substitui a confirmação da estrutura disponível.
 7. Razão social, CNPJ, endereço e responsável pelo tratamento, sem inventar esses dados.
@@ -128,42 +97,4 @@ O protótipo não possui depoimentos, números de clientes, promessas de entrega
 
 ## Privacidade
 
-O formulário permanece na memória da página. Nada é salvo em armazenamento local, banco de dados, logs da aplicação ou analytics. O link do WhatsApp é montado no navegador. Abrir o link encaminha o texto preenchido ao serviço WhatsApp/Meta; a empresa recebe a mensagem quando o visitante a envia. A interface explica esse fluxo e mantém os campos preenchidos enquanto a página estiver aberta.
-
-O carrinho usa a chave becal:cart:v1 no localStorage, exclusivamente para IDs e quantidades. O site continua funcionando em memória se o navegador bloquear o armazenamento. Não há pixels, serviços de analytics, fontes remotas nem embeds do Instagram. A hospedagem poderá tratar dados técnicos; a demonstração privada Sites também usa o mecanismo de acesso da plataforma.
-
-Os documentos iniciais não representam certificação de conformidade com a LGPD.
-
-## Segurança e publicação
-
-A aplicação usa escaping do React, validação estrita, limites de entrada, destino do WhatsApp fixo e links externos com noopener/noreferrer. O formulário não usa uma requisição GET para um servidor próprio. O site não tem endpoints próprios de escrita, pagamento ou cadastro de clientes; a única escrita é a do painel, feita direto no Supabase por um administrador autenticado e limitada pelas políticas de supabase/schema.sql. Fotos enviadas pelo painel são reduzidas e convertidas para WebP no navegador antes do envio.
-
-O build executa scripts/secure-export.mjs **após** o Next.js e calcula hashes SHA-256 dos scripts inline efetivamente exportados. A CSP de produção não permite unsafe-eval nem unsafe-inline para scripts. style-src permite unsafe-inline por compatibilidade com estilos de componentes e do framework; scripts continuam limitados à mesma origem e aos hashes gerados. A política bloqueia objetos, frames e submissões HTML convencionais; orçamento é tratado por JavaScript local.
-
-São gerados out/_headers e vercel.json contendo CSP, nosniff, Referrer-Policy: no-referrer, frame-ancestors, X-Frame-Options: DENY, Permissions-Policy, HSTS e X-Robots-Tag. O servidor de preview efetivamente os envia, e a suíte E2E confere os principais cabeçalhos. HSTS só produz efeito em HTTPS.
-
-### Hospedagem estática
-
-Publique o conteúdo de out após npm ci e npm run build. Não é necessário next start.
-
-- **Sites:** a identidade privada está em .openai/hosting.json. O conteúdo exportado é empacotado e a versão publicada mantém o acesso privado. A versão demonstrativa não deve ser tornada pública antes das confirmações comerciais.
-- **Cloudflare Pages ou hospedagem compatível:** use comando npm run build, saída out e preserve out/_headers.
-- **Vercel:** vercel.json é regenerado a cada build com os hashes correspondentes àquela saída. Preserve a configuração gerada na implantação.
-- **Nginx/Apache/outros:** importe os cabeçalhos de out/.security-headers.json no servidor; sirva caminhos com barra final pelo respectivo index.html e 404.html para inexistentes.
-
-Cabeçalhos configurados em next.config.ts não seriam aplicados por uma hospedagem puramente estática. Por isso eles são gerados na saída e devem ser efetivamente respeitados pela hospedagem escolhida. Confirme com curl -I os cabeçalhos no domínio final. Não minifique nem altere scripts HTML depois do build, pois isso invalida os hashes da CSP.
-
-Para atualizar a aplicação, refaça o build e publique **toda** a saída atomicamente. O servidor local relê os cabeçalhos a cada requisição para acompanhar recompilações.
-
-Ao aprovar o lançamento: ajustar origem, documentos e dados comerciais; revisar a privacidade da hospedagem; alterar robots.ts, metadata.robots e X-Robots-Tag para indexação conforme a estratégia comercial; e repetir as verificações. O sitemap já contempla todas as páginas.
-
-## Materiais e dependências
-
-As imagens foram fornecidas pelo solicitante e apenas redimensionadas/codificadas para WebP. O logotipo foi mantido. A seção e a página de foodbike usam a foto fornecida pelo solicitante, otimizada em WebP com versões de 800 e 1600 pixels. A interface inteira usa DM Sans, sem serifa, servida localmente e com licença em public/fonts.
-
-scripts/prepare-assets.mjs documenta o mapeamento das imagens originais no computador de criação; só é necessário para reprocessá-las. Os nomes e números impressos nas artes permanecem como recebidos, sem recriação do rótulo.
-
-Versões diretas fixadas e package-lock.json versionado. A configuração de ESLint usa typescript-eslint, react-hooks e jsx-a11y; substituiu eslint-config-next porque sua cadeia de ferramentas incluía uma vulnerabilidade transitiva sem correção disponível no momento da montagem. A auditoria final deve ser repetida a cada atualização.
-
-Referências técnicas: [exportação estática do Next.js](https://nextjs.org/docs/app/guides/static-exports), [CSP no Next.js](https://nextjs.org/docs/app/guides/content-security-policy), [LGPD no Planalto](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm).
-
+Pedidos e orçamentos são registrados para atendimento antes da continuação no WhatsApp. A empresa deverá definir retenção, canal de atendimento dos direitos dos titulares e práticas de exclusão. As páginas de privacidade e termos descrevem esse fluxo. Não existem pagamentos, pixels de marketing ou autenticação de clientes; as contas do painel são só da equipe. Fotografias e fontes permanecem locais, exceto fotos novas enviadas pelo painel, que ficam no Storage do Supabase.

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { Panel } from "@/components/admin/panel";
 import { createLocalRepo, createSupabaseRepo, getSupabase, type AdminRepo } from "@/lib/admin-repo";
-import { supabaseConfig } from "@/lib/catalog";
+import { supabaseConfig } from "@/lib/supabase";
 import type { Role } from "@/types/product";
 
 /* ---------- Acesso ---------- */
@@ -36,7 +36,7 @@ export function AdminApp() {
         const { data, error } = await client.rpc("my_role");
         if (cancelled) return;
         const email = user.email ?? "";
-        if (error) setAccess({ state: "error", detail: "O banco de dados não está preparado ou está desatualizado. Execute supabase/schema.sql no projeto Supabase." });
+        if (error) setAccess({ state: "error", detail: "O banco ainda não tem as tabelas do painel. Aplique as migrações de supabase/migrations no projeto Supabase (npx supabase db push)." });
         else if (data === "admin" || data === "estoque") setAccess({ state: "ready", repo: createSupabaseRepo(client, { id: user.id, role: data as Role }), email });
         else setAccess({ state: "forbidden", email });
       };
@@ -47,7 +47,7 @@ export function AdminApp() {
         setTimeout(() => void resolve(session?.user), 0);
       });
       unsubscribe = () => data.subscription.unsubscribe();
-    }).catch(() => { if (!cancelled) setAccess({ state: "error", detail: "Não foi possível conectar ao Supabase. Confira as variáveis NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY." }); });
+    }).catch(() => { if (!cancelled) setAccess({ state: "error", detail: "Não foi possível conectar ao Supabase. Confira as variáveis NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY." }); });
     return () => { cancelled = true; unsubscribe(); };
   }, []);
 

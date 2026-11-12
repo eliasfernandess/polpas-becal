@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { productById, seedProducts, toProduct } from "@/data/products";
 import { maxQuantityFor, sanitizeCart, updateCart } from "@/lib/cart";
-import { parsePrice, parseProducts, productSchema, setCatalog, slugify, toData } from "@/lib/catalog";
+import { fromRow, parsePrice, parseProducts, productSchema, setCatalog, slugify, toData, toRow } from "@/lib/catalog";
 
 const base = toData(seedProducts[0]);
 afterEach(() => setCatalog(seedProducts));
@@ -23,11 +23,29 @@ describe("catálogo", () => {
     { stock: -1 }, { stock: 1.5 }, { stock: 100001 }, { priceInCents: -1 }, { name: "x" }, { id: "Com Espaço" }, { tone: "neon" },
     { image: "javascript:alert(1)" }, { image: "http://inseguro.test/a.png" }, { image: "data:text/html;base64,PHNjcmlwdD4=" },
   ])("recusa produto inválido %j", change => expect(productSchema.safeParse({ ...base, ...change }).success).toBe(false));
-  it.each(["", "/images/products/manga.webp", "https://exemplo.supabase.co/storage/v1/object/public/product-images/a.webp", "data:image/webp;base64,UklGRg=="])("aceita imagem %j", image => expect(productSchema.safeParse({ ...base, image }).success).toBe(true));
+  it.each(["", "/images/products/manga.webp", "https://exemplo.supabase.co/storage/v1/object/public/product-images/a.webp", "/images/products/manga.png", "data:image/webp;base64,UklGRg=="])("aceita imagem %j", image => expect(productSchema.safeParse({ ...base, image }).success).toBe(true));
   it("ignora registros inválidos, duplicados e campos desconhecidos ao carregar", () => {
     const list = parseProducts([base, base, { ...base, id: "outro", sort: 5 }, { ...base, id: "ruim", stock: -3 }, { ...base, id: "extra", admin: true }, null, "x"]);
     expect(list.map(p => p.id)).toEqual([base.id, "outro"]);
     expect(parseProducts("nada")).toEqual([]);
+  });
+});
+
+describe("colunas do banco", () => {
+  const row = { id: "manga", name: "Manga", description: "Polpa", image: "/images/products/manga.webp", price_in_cents: 725, unit_label: "100 g", category: "Clássicos", tone: "peach", stock: 12, low_stock: 5, available: true, featured: true, sort_order: 2 };
+  it("mapeia os campos do banco sem perder o preço em centavos", () => {
+    expect(parseProducts([fromRow(row)])[0]).toMatchObject({ id: "manga", priceInCents: 725, unitLabel: "100 g", stock: 12, lowStock: 5, active: true, available: true, sort: 2 });
+  });
+  it("visibilidade do banco vira `active`; disponível exige estoque", () => {
+    expect(parseProducts([fromRow({ ...row, available: false })])[0]).toMatchObject({ active: false, available: false });
+    expect(parseProducts([fromRow({ ...row, stock: 0 })])[0]).toMatchObject({ active: true, available: false });
+  });
+  it("ida e volta preserva os dados gravados", () => expect(toRow(parseProducts([fromRow(row)])[0])).toEqual(row));
+  it.each([{ price_in_cents: -1 }, { price_in_cents: 2.5 }, { image: "https://unknown.test/image.jpg" }, { image: "https://abc.supabase.co/storage/v1/object/public/outro-bucket/a.webp" }, { tone: "arbitrary-class" }])("recusa catálogo inválido %j", override => {
+    expect(parseProducts([fromRow({ ...row, ...override })])).toEqual([]);
+  });
+  it("aceita foto enviada ao bucket do painel", () => {
+    expect(parseProducts([fromRow({ ...row, image: "https://abcd.supabase.co/storage/v1/object/public/product-images/manga-1.webp" })])).toHaveLength(1);
   });
 });
 

@@ -168,7 +168,6 @@ small { font-size: 13px; color: var(--ink-faint); }
 .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
 .product-grid.is-featured { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 @media (max-width: 1040px) { .product-grid.is-featured { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 520px) { .product-grid.is-featured { grid-template-columns: minmax(0, 1fr); } }
 .product-card { display: flex; flex-direction: column; padding: 8px; border-radius: var(--r-card); background: var(--pulp); box-shadow: 0 0 0 1px var(--rind); }
 .product-visual { position: relative; display: grid; place-items: center; aspect-ratio: 1.08; border-radius: 16px; background: var(--tone); overflow: hidden; }
 .product-visual img { width: 78%; aspect-ratio: 1; object-fit: contain; transition: transform 400ms var(--ease); }
@@ -369,7 +368,28 @@ small { font-size: 13px; color: var(--ink-faint); }
   .shelf-stamp { width: 80px; height: 80px; box-shadow: 0 0 0 4px var(--paper); }
   .shelf-stamp strong { font-size: 23px; }
   .shelf-stamp span { font-size: 10px; }
-  .product-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+  /* Celular: três produtos por linha, cards compactos (branch mobile). */
+  .product-grid, .product-grid.is-featured { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 6px; }
+  .product-card { padding: 4px; border-radius: 14px; }
+  .product-visual { aspect-ratio: 4 / 5; border-radius: 10px; }
+  .product-visual img { width: 92%; }
+  .product-initial { font-size: 56px; }
+  .product-unit, .product-flag { top: 5px; padding: 2px 6px; font-size: 9px; letter-spacing: 0; }
+  .product-unit { left: 5px; }
+  .product-flag { right: auto; left: 5px; top: auto; bottom: 5px; max-width: calc(100% - 10px); }
+  .product-info { gap: 3px; padding: 8px 4px 4px; }
+  .product-category { font-size: 8px; letter-spacing: 0.06em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .product-title { flex-direction: column; align-items: flex-start; gap: 2px; }
+  .product-title h3 { font-size: 15px; overflow-wrap: anywhere; }
+  .product-price { font-size: 13px; }
+  .product-info p { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; font-size: 11px; line-height: 1.4; }
+  .product-buy { flex-direction: column; align-items: stretch; gap: 6px; padding-top: 8px; }
+  .product-card .stepper { justify-content: space-between; }
+  .product-card .stepper button { flex: 1; width: auto; min-width: 26px; height: 40px; }
+  .product-card .stepper span { min-width: 16px; font-size: 13px; }
+  .add-button { min-height: 40px; padding-inline: 4px; gap: 3px; font-size: 12px; }
+  .add-button svg { flex: none; width: 14px; }
+  .unavailable { min-height: 86px; align-items: flex-start; font-size: 11px; line-height: 1.35; }
   .form-grid, .occasion-grid, .footer-main { grid-template-columns: minmax(0, 1fr); }
   .search-box { max-width: none; }
   .button { width: 100%; }
@@ -385,3 +405,8 @@ small { font-size: 13px; color: var(--ink-faint); }
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+/* Catálogo vindo do banco: carregando ou falhou. */
+.catalog-status { padding: 40px 20px; border-radius: var(--r-card); background: var(--pulp); box-shadow: 0 0 0 1px var(--rind); text-align: center; color: var(--ink-soft); }
+.catalog-status[role="alert"] { color: #8a0c2b; }
+.checkout-saved { padding: 10px 14px; border-radius: var(--r-control); background: var(--frost); color: var(--leaf); font-size: 14px; font-weight: 600; }

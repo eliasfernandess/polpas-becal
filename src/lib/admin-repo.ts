@@ -1,7 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { seedProducts, toProduct } from "@/data/products";
-import { fromRow, parseProducts, PRODUCT_COLUMNS, productSchema, readLocalCatalog, sortProducts, supabaseConfig, toData, toRow, writeLocalCatalog, type ProductRow } from "@/lib/catalog";
+import { fromRow, parseProducts, PRODUCT_COLUMNS, productSchema, readLocalCatalog, sortProducts, toData, toRow, writeLocalCatalog, type ProductRow } from "@/lib/catalog";
+import { supabaseConfig } from "@/lib/supabase";
 import type { CartItem, Product, ProductData, Role, StockMovement, Team, TeamInvite } from "@/types/product";
 
 export const inviteSchema = z.object({
@@ -152,7 +153,7 @@ let clientPromise: Promise<SupabaseClient> | null = null;
 /** Cliente Supabase carregado sob demanda (somente o painel usa o SDK). */
 export function getSupabase(): Promise<SupabaseClient> {
   if (!supabaseConfig) return Promise.reject(new Error("Supabase não configurado."));
-  clientPromise ??= import("@supabase/supabase-js").then(({ createClient }) => createClient(supabaseConfig!.url, supabaseConfig!.anonKey));
+  clientPromise ??= import("@supabase/supabase-js").then(({ createClient }) => createClient(supabaseConfig!.url, supabaseConfig!.key));
   return clientPromise;
 }
 
@@ -176,7 +177,8 @@ export function createSupabaseRepo(client: SupabaseClient, me: { id: string; rol
     },
     async create(input) {
       const { stock, ...row } = toRow(validate(input));
-      const { data, error } = await client.from("products").insert({ ...row, stock: 0 }).select(PRODUCT_COLUMNS).single();
+      // O estoque nasce em 0 (padrão do banco) e o inicial entra como movimentação "Cadastro".
+      const { data, error } = await client.from("products").insert(row).select(PRODUCT_COLUMNS).single();
       if (error) throw friendly(error);
       if (stock > 0) {
         const adjusted = await client.rpc("adjust_stock", { p_product_id: row.id, p_delta: stock, p_reason: "Cadastro", p_note: "Estoque inicial" });

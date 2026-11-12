@@ -1,7 +1,9 @@
 import { test, expect } from "@playwright/test";
 import fs from "node:fs/promises";
 
-// Sem Supabase configurado no build de teste, o painel roda em modo demonstração (dados no navegador).
+// Estes cenários usam o modo demonstração (dados no navegador). Com Supabase, o painel exige login
+// e as regras de acesso são testadas em supabase/tests/painel.sql.
+test.skip(Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL), "Painel em modo demonstração: só no build sem Supabase.");
 test("painel: cria produto, movimenta estoque e reflete na loja", async ({ page }) => {
   const failures: string[] = [];
   page.on("pageerror", error => failures.push(error.message));

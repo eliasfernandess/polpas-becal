@@ -1,11 +1,11 @@
 "use client";
 import { useEffect, useRef } from "react";
 import Link from "next/link";
-import { ArrowRight, MessageCircle, Minus, Plus, ShoppingBag, Trash2, X } from "lucide-react";
+import { ArrowRight, Minus, Plus, ShoppingBag, Trash2, X } from "lucide-react";
+import { OrderCheckout } from "@/components/order-checkout";
 import { productById } from "@/data/products";
 import { cartTotal, maxQuantityFor, sanitizeCart } from "@/lib/cart";
 import { money } from "@/lib/money";
-import { orderMessage, whatsappUrl } from "@/lib/whatsapp";
 import { useCart } from "@/store/cart-store";
 
 export function CartDrawer() {
@@ -52,8 +52,7 @@ export function CartDrawer() {
         <div className="cart-checkout">
           <div className="cart-total"><span>Total estimado</span><strong>{money(total)}</strong></div>
           <p>Catálogo demonstrativo. Disponibilidade, valor final, entrega ou retirada serão combinados com a equipe.</p>
-          <a className="button button-primary full" href={whatsappUrl(orderMessage(items))} target="_blank" rel="noopener noreferrer"><MessageCircle size={18} /> Continuar no WhatsApp <ArrowRight size={16} /></a>
-          <small>O pedido só será compartilhado quando você enviar a mensagem no WhatsApp.</small>
+          <OrderCheckout />
           <button className="text-button" onClick={() => setOpen(false)}>Continuar escolhendo</button>
         </div>
       </> : <div className="empty-cart">

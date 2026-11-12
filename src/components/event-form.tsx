@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ArrowLeft, ArrowRight, ArrowUpRight, BriefcaseBusiness, Cake, Check, CheckCircle2, GraduationCap, Heart, LockKeyhole, MessageCircle, Sparkles, type LucideIcon } from "lucide-react";
+import { saveEventRequest } from "@/lib/submissions";
+import { supabaseConfigured } from "@/lib/supabase";
 import { createEventSchema, durations, eventTypes, guestCounts, localToday } from "@/lib/validation";
 import { eventMessage, whatsappUrl } from "@/lib/whatsapp";
 
@@ -26,9 +28,14 @@ export function EventForm() {
   const [reached, setReached] = useState(0);
   const [errors, setErrors] = useState<Errors>({});
   const [link, setLink] = useState("");
+  const [pending, setPending] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const [today] = useState(() => localToday());
   const heading = useRef<HTMLHeadingElement>(null);
   const moved = useRef(false);
+  // Mesmos dados, mesma referência: reenviar após uma falha não duplica o orçamento no banco.
+  const attempt = useRef<{ signature: string; id: string } | null>(null);
+  const busy = useRef(false);
 
   // Ao trocar de etapa, o foco vai para o título dela (leitores de tela e teclado acompanham).
   useEffect(() => { if (moved.current) heading.current?.focus(); }, [step]);
@@ -37,6 +44,7 @@ export function EventForm() {
     setValues(current => ({ ...current, [field]: value }));
     setErrors(current => ({ ...current, [field]: undefined }));
     setLink("");
+    setSubmitError("");
   };
   const check = (fields: Field[]): Errors => {
     const result = createEventSchema().safeParse(values);
@@ -54,8 +62,9 @@ export function EventForm() {
     (document.getElementById(first) ?? document.querySelector<HTMLElement>(`[name="${first}"]`))?.focus();
   };
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (busy.current) return;
     if (step < last) {
       const found = check(steps[step].fields);
       if (Object.keys(found).length) fail(found); else go(step + 1);
@@ -70,9 +79,24 @@ export function EventForm() {
       setErrors(check(steps[index].fields));
       return;
     }
-    const url = whatsappUrl(eventMessage(result.data));
-    setLink(url);
-    window.open(url, "_blank", "noopener,noreferrer");
+    if (!supabaseConfigured) {
+      const url = whatsappUrl(eventMessage(result.data));
+      setLink(url);
+      window.open(url, "_blank", "noopener,noreferrer");
+      return;
+    }
+    // Com o banco configurado, a solicitação é registrada antes; o WhatsApp leva a referência.
+    // A janela não abre sozinha: depois da espera, o navegador a bloquearia.
+    const signature = JSON.stringify(result.data);
+    if (attempt.current?.signature !== signature) attempt.current = { signature, id: crypto.randomUUID() };
+    const request = attempt.current;
+    busy.current = true; setPending(true); setSubmitError(""); setLink("");
+    try {
+      await saveEventRequest(request.id, result.data);
+      setLink(whatsappUrl(`${eventMessage(result.data)}\n\nReferência do orçamento: ${request.id}`));
+    } catch (cause) {
+      setSubmitError(cause instanceof Error ? cause.message : "Não foi possível registrar. Tente novamente.");
+    } finally { busy.current = false; setPending(false); }
   }
 
   const input = (name: Field) => ({ id: name, name, value: values[name], "aria-invalid": Boolean(errors[name]), "aria-describedby": errors[name] ? `${name}-error` : undefined });
@@ -159,17 +183,27 @@ export function EventForm() {
           <button type="button" className="text-button" onClick={() => go(target)} aria-label={`Editar ${label.toLowerCase()}`}>Editar</button>
         </div>)}
       </dl>
-      <p className="form-privacy"><LockKeyhole size={16} /> Seus dados ficam apenas nesta página até você enviar a mensagem no WhatsApp. Não salvamos o formulário.</p>
+      <p className="form-privacy"><LockKeyhole size={16} /> {supabaseConfigured
+        ? "Ao solicitar, salvamos os dados do evento para preparar seu orçamento. Só a equipe tem acesso. A conversa continua pelo WhatsApp."
+        : "Seus dados ficam apenas nesta página até você enviar a mensagem no WhatsApp. Não salvamos o formulário."}</p>
     </>}
 
+    {submitError && step === last && <p role="alert" className="form-alert">{submitError}</p>}
+
     <div className="form-nav">
-      {step > 0 && <button type="button" className="button button-ghost" onClick={() => go(step - 1)}><ArrowLeft size={17} /> Voltar</button>}
+      {step > 0 && <button type="button" className="button button-ghost" onClick={() => go(step - 1)} disabled={pending}><ArrowLeft size={17} /> Voltar</button>}
       {step < last
         ? <button className="button button-primary" type="submit">Continuar <ArrowRight size={17} /></button>
-        : <button className="button button-primary" type="submit"><MessageCircle size={18} /> Solicitar orçamento <ArrowUpRight size={17} /></button>}
+        : supabaseConfigured && link
+          ? <a className="button button-primary" href={link} target="_blank" rel="noopener noreferrer"><MessageCircle size={18} /> Continuar no WhatsApp <ArrowUpRight size={17} /></a>
+          : <button className="button button-primary" type="submit" disabled={pending}><MessageCircle size={18} /> {pending ? "Registrando…" : "Solicitar orçamento"} <ArrowUpRight size={17} /></button>}
     </div>
     {step === last && <p className="form-footnote">Disponibilidade e condições sob consulta. O formulário não representa reserva.</p>}
 
-    {link && step === last && <div className="form-success" role="status"><CheckCircle2 size={22} /><div><strong>Sua mensagem está pronta.</strong><p>Envie no WhatsApp para compartilhar a solicitação. Caso a janela não tenha aberto, <a href={link} target="_blank" rel="noopener noreferrer">continue por aqui</a>.</p></div></div>}
+    {link && step === last && <div className="form-success" role="status"><CheckCircle2 size={22} /><div>
+      {supabaseConfigured
+        ? <><strong>Solicitação registrada.</strong><p>Agora é só <a href={link} target="_blank" rel="noopener noreferrer">continuar no WhatsApp</a> para combinar os detalhes com a equipe.</p></>
+        : <><strong>Sua mensagem está pronta.</strong><p>Envie no WhatsApp para compartilhar a solicitação. Caso a janela não tenha aberto, <a href={link} target="_blank" rel="noopener noreferrer">continue por aqui</a>.</p></>}
+    </div></div>}
   </form>;
 }

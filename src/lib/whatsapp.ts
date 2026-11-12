@@ -1,9 +1,9 @@
 import { business } from "@/data/business";
-import { productById } from "@/data/products";
+import { productById as defaultCatalog } from "@/data/products";
 import { cartTotal, sanitizeCart } from "./cart";
 import { money } from "./money";
 import { createEventSchema, type EventRequest } from "./validation";
-import type { CartItem } from "@/types/product";
+import type { CartItem, Product } from "@/types/product";
 export function whatsappUrl(message: string, phone: string = business.whatsapp): string {
   if (!/^[+\d()\s-]+$/.test(phone)) throw new Error("Telefone inválido.");
   const digits = phone.replace(/\D/g, "");
@@ -11,8 +11,8 @@ export function whatsappUrl(message: string, phone: string = business.whatsapp):
   if (!message.trim() || message.length > 20000) throw new Error("Mensagem inválida.");
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
 }
-export function orderMessage(value: CartItem[]): string {
-  const items = sanitizeCart(value);
+export function orderMessage(value: CartItem[], productById: ReadonlyMap<string, Product> = defaultCatalog): string {
+  const items = sanitizeCart(value, productById);
   if (!items.length) throw new Error("Seu carrinho está vazio.");
   return [
     "Olá, Polpas Becal! Gostaria de consultar este pedido.",
@@ -21,7 +21,7 @@ export function orderMessage(value: CartItem[]): string {
       const p = productById.get(item.id)!;
       return `${item.quantity}x Polpa de ${p.name} (${p.unitLabel}) — ${money(p.priceInCents)} por unidade — subtotal ${money(p.priceInCents * item.quantity)}`;
     }),
-    "", `TOTAL ESTIMADO: ${money(cartTotal(items))}`,
+    "", `TOTAL ESTIMADO: ${money(cartTotal(items, productById))}`,
     "Valores e unidades demonstrativos, sujeitos a confirmação.",
     "", "Poderiam confirmar os sabores disponíveis, os preços oficiais e as opções de entrega ou retirada?",
   ].join("\n");
