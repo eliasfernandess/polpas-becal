@@ -36,7 +36,7 @@
 
 /* ---------- Estrutura: menu lateral + página ---------- */
 .adm { display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: 100dvh; background: var(--frost); }
-.adm-side { position: sticky; top: 0; display: flex; flex-direction: column; gap: 24px; height: 100dvh; padding: 20px 12px; background: var(--frost); border-right: 1px solid var(--line); }
+.adm-side { position: sticky; top: 0; display: flex; flex-direction: column; gap: 24px; height: 100dvh; padding: 20px 12px; overflow-y: auto; overscroll-behavior: contain; background: var(--frost); border-right: 1px solid var(--line); }
 .adm-side-head { display: flex; align-items: center; justify-content: space-between; padding: 0 8px; }
 .adm-side-head img { width: 112px; }
 .adm-side .adm-side-close { display: none; }
@@ -365,4 +365,49 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .adm-side { transition: none; }
+}
+
+/* ---------- Avisos, kits e entrega ---------- */
+.adm-callout { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px 16px; padding: 14px 20px; border-radius: var(--r-lg); background: var(--fresh-bg); color: var(--fresh-text); }
+.adm-callout strong { color: var(--text-1); }
+.adm-callout p { font-size: 13px; }
+.adm-warn-text { color: var(--warn); font-weight: 600; }
+.adm-chips-list li svg { color: var(--ok); }
+
+.adm-kit { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; align-items: center; gap: 16px; padding: 12px 16px 12px 12px; border-radius: var(--r-lg); background: var(--sheet); box-shadow: 0 0 0 1px var(--line); }
+.adm-kit[data-hidden="true"] .adm-kit-visual, .adm-kit[data-hidden="true"] .adm-kit-body { opacity: 0.55; }
+.adm-kit-visual { display: grid; place-items: center; width: 96px; height: 96px; border-radius: var(--r-md); background: var(--frost); overflow: hidden; }
+.adm-kit-visual .kit-mosaic { display: grid; grid-template-columns: repeat(2, 1fr); gap: 3px; width: 100%; padding: 6px; }
+.adm-kit-visual .kit-mosaic span { display: grid; place-items: center; aspect-ratio: 1; border-radius: 6px; background: var(--tone); }
+.adm-kit-visual .kit-mosaic img { width: 80%; }
+.adm-kit-visual .kit-photo { width: 90%; height: 90%; object-fit: contain; }
+.adm-kit-body { display: grid; gap: 8px; min-width: 0; }
+.adm-kit-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.adm-kit-head strong { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; }
+.adm-kit-head strong svg { color: var(--fresh); fill: var(--fresh); }
+.adm-kit-body .adm-hint b { color: var(--text-1); }
+
+.adm-bulk { padding: 12px 14px; border-radius: var(--r-md); box-shadow: inset 0 0 0 1px var(--line); }
+.adm-bulk[data-on="true"] { background: var(--frost); }
+.adm-bulk .adm-fields { margin-top: 12px; }
+
+.adm-rules { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.adm-zone-form { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.2fr) minmax(0, 0.8fr) auto; gap: 12px; align-items: end; padding: 12px; border-radius: var(--r-md); background: var(--frost); }
+.adm-zones { display: grid; gap: 16px; margin: 0; padding: 0; list-style: none; }
+.adm-zones h3 { margin-bottom: 4px; }
+.adm-zones ul { margin: 0; padding: 0; list-style: none; border-radius: var(--r-md); box-shadow: inset 0 0 0 1px var(--line); }
+.adm-zones li li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 16px; padding: 6px 8px 6px 14px; border-top: 1px solid var(--line); }
+.adm-zones li li:first-child { border-top: 0; }
+.adm-zones li li[data-hidden="true"] > span, .adm-zones li li[data-hidden="true"] > b { opacity: 0.5; }
+.adm-zones li li small { color: var(--text-3); }
+.adm-zones b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.adm-empty-flat { box-shadow: none; padding: 24px; }
+
+@media (max-width: 860px) {
+  .adm-callout { grid-template-columns: auto minmax(0, 1fr); }
+  .adm-callout .adm-btn { grid-column: 1 / -1; }
+  .adm-rules, .adm-zone-form { grid-template-columns: minmax(0, 1fr); }
+  .adm-kit { grid-template-columns: 72px minmax(0, 1fr); }
+  .adm-kit-visual { width: 72px; height: 72px; }
+  .adm-kit .adm-actions { grid-column: 1 / -1; justify-content: flex-start; }
 }

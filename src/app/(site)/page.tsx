@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight, GlassWater, Leaf, Snowflake, Sun } from "lucide-react";
 import { FoodbikeBanner } from "@/components/foodbike";
+import { KitsSection } from "@/components/kits";
 import { FeaturedProducts } from "@/components/products";
 import { business } from "@/data/business";
 
@@ -41,6 +42,7 @@ export default function Home() {
         <Link href="/produtos/" className="text-link">Conheça todas as polpas <ArrowUpRight size={17} /></Link>
       </div>
       <FeaturedProducts />
+      <KitsSection />
     </section>
 
     <section id="sobre" className="essence">

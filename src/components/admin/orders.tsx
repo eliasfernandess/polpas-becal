@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Bike, CalendarDays, Clock, MapPin, MessageCircle, PackageCheck, Store, Users } from "lucide-react";
+import { Bike, CalendarDays, Clock, Gift, MapPin, MessageCircle, PackageCheck, Store, Users } from "lucide-react";
 import { Modal } from "@/components/admin/dialogs";
 import type { AdminRepo } from "@/lib/admin-repo";
 import { money } from "@/lib/money";
@@ -27,6 +27,17 @@ export function timeAgo(iso: string, now = Date.now()): string {
 }
 const brDate = (iso: string) => iso.split("-").reverse().join("/");
 const chat = (phone: string, text: string) => phone ? whatsappUrl(text, `+55${phone}`) : "";
+/** Unidades de cada sabor que o pedido consome (kits abertos nos sabores). */
+export function orderDemand(order: OrderRecord): Map<string, { name: string; units: number }> {
+  const demand = new Map<string, { name: string; units: number }>();
+  const add = (id: string, name: string, units: number) => { const entry = demand.get(id) ?? { name, units: 0 }; entry.units += units; demand.set(id, entry); };
+  for (const item of order.items) {
+    if (item.kind === "kit") for (const c of item.components ?? []) add(c.id, c.name, c.quantity * item.quantity);
+    else add(item.id, item.name, item.quantity);
+  }
+  return demand;
+}
+const feeText = (order: OrderRecord) => order.deliveryFeeCents === null ? "taxa a combinar" : order.deliveryFeeCents === 0 ? "entrega grátis" : `taxa ${money(order.deliveryFeeCents)}`;
 
 export function StatusBadge({ status, label }: { status: string; label: string }) {
   return <span className="adm-badge" data-status={status}>{label}</span>;
@@ -82,14 +93,16 @@ export function OrdersView({ repo, orders, products, failure, onChanged }: {
             <Contact name={order.customerName} phone={order.customerPhone} text={`Olá, ${order.customerName.split(" ")[0] || ""}! Aqui é da Polpas Becal, sobre o seu pedido ${order.id.slice(0, 8)}.`} />
             <div className="adm-meta"><StatusBadge status={order.status} label={orderStatus[order.status]} /><time dateTime={order.createdAt}>{timeAgo(order.createdAt)}</time></div>
           </header>
-          <ul className="adm-chips-list" aria-label="Itens">{order.items.map(item => <li key={item.id}><i className={`tone-dot tone-${tone(item.id)}`} aria-hidden="true" />{item.quantity}× {item.name}</li>)}</ul>
+          <ul className="adm-chips-list" aria-label="Itens">{order.items.map(item => item.kind === "kit"
+            ? <li key={item.id} title={(item.components ?? []).map(c => `${c.quantity}× ${c.name}`).join(", ")}><Gift size={13} aria-hidden="true" />{item.quantity}× {item.name}</li>
+            : <li key={item.id}><i className={`tone-dot tone-${tone(item.id)}`} aria-hidden="true" />{item.quantity}× {item.name}</li>)}</ul>
           <p className="adm-where">
-            {order.fulfillment === "entrega" ? <><Bike size={16} /> <span><b>Entrega</b> · {[order.address.street, order.address.number, order.address.complement].filter(Boolean).join(", ")} — {order.address.district}, {order.address.city} · CEP {formatPostalCode(order.address.postalCode)}</span></>
+            {order.fulfillment === "entrega" ? <><Bike size={16} /> <span><b>Entrega</b> · {feeText(order)} · {[order.address.street, order.address.number, order.address.complement].filter(Boolean).join(", ")} — {order.address.district}, {order.address.city} · CEP {formatPostalCode(order.address.postalCode)}</span></>
               : order.fulfillment === "retirada" ? <><Store size={16} /> <span><b>Retirada</b> · combinar horário</span></>
               : <><Store size={16} /> <span>Pedido anterior ao checkout com endereço: combine pelo WhatsApp.</span></>}
           </p>
           <footer>
-            <span className="adm-total">{money(order.totalInCents)} <small>· {order.id.slice(0, 8)}</small></span>
+            <span className="adm-total">{money(order.totalInCents + (order.deliveryFeeCents ?? 0))} <small>{order.deliveryFeeCents ? `· com entrega · ` : "· "}{order.id.slice(0, 8)}</small></span>
             <div className="adm-row-actions">
               {(order.status === "pending_whatsapp" || order.status === "contacted") && <>
                 {order.status === "pending_whatsapp" && <button className="adm-btn" disabled={busy === order.id} onClick={() => void change(order, "contacted", "Pedido marcado como em contato.")}>Em contato</button>}
@@ -109,7 +122,8 @@ export function OrdersView({ repo, orders, products, failure, onChanged }: {
 function ConfirmOrder({ repo, order, products, onClose, onDone }: { repo: AdminRepo; order: OrderRecord; products: Product[]; onClose: () => void; onDone: () => void }) {
   const [failure, setFailure] = useState("");
   const [busy, setBusy] = useState(false);
-  const short = order.items.filter(item => (products.find(p => p.id === item.id)?.stock ?? 0) < item.quantity);
+  const demand = [...orderDemand(order)];
+  const short = demand.filter(([id, d]) => (products.find(p => p.id === id)?.stock ?? 0) < d.units).map(([, d]) => d);
   async function confirm() {
     setBusy(true); setFailure("");
     try { await repo.confirmOrder(order.id); onDone(); }
@@ -118,14 +132,15 @@ function ConfirmOrder({ repo, order, products, onClose, onDone }: { repo: AdminR
   return <Modal title={`Confirmar pedido de ${order.customerName || "cliente"}?`} onClose={onClose} busy={busy}>
     <div className="adm-form-body">
       <p>Confirme só depois de combinar com o cliente. O estoque será baixado assim:</p>
-      <ul className="adm-confirm-list">{order.items.map(item => {
-        const stock = products.find(p => p.id === item.id)?.stock;
-        return <li key={item.id} data-short={stock !== undefined && stock < item.quantity}>
-          <span>{item.quantity}× {item.name}</span>
-          <span>{stock === undefined ? "produto removido" : `${stock} → ${stock - item.quantity} un.`}</span>
+      <ul className="adm-confirm-list">{demand.map(([id, d]) => {
+        const stock = products.find(p => p.id === id)?.stock;
+        return <li key={id} data-short={stock === undefined || stock < d.units}>
+          <span>{d.units}× {d.name}</span>
+          <span>{stock === undefined ? "produto removido" : `${stock} → ${stock - d.units} un.`}</span>
         </li>;
       })}</ul>
-      {short.length > 0 && <p className="adm-banner adm-banner-error">Falta estoque de {short.map(i => i.name).join(", ")}. Registre uma entrada antes de confirmar.</p>}
+      {order.items.some(i => i.kind === "kit") && <p className="adm-hint">Os kits foram abertos nos sabores que levam.</p>}
+      {short.length > 0 && <p className="adm-banner adm-banner-error">Falta estoque de {short.map(d => d.name).join(", ")}. Registre uma entrada antes de confirmar.</p>}
     </div>
     <footer className="adm-modal-foot">
       {failure && <p role="alert" className="adm-error">{failure}</p>}

@@ -1,6 +1,6 @@
 import { business } from "@/data/business";
 import { productById as defaultCatalog } from "@/data/products";
-import { cartTotal, sanitizeCart } from "./cart";
+import { cartTotal, kitOf, lineTotal, sanitizeCart, unitPrice } from "./cart";
 import { money } from "./money";
 import { createEventSchema, formatPhone, formatPostalCode, type Checkout, type EventRequest } from "./validation";
 import type { CartItem, Product } from "@/types/product";
@@ -18,24 +18,42 @@ export function addressLine(c: Pick<Checkout, "street" | "number" | "complement"
   return `${[c.street, c.number, c.complement].filter(Boolean).join(", ")} — ${c.district}, ${c.city} — CEP ${formatPostalCode(c.postalCode)}`;
 }
 
-export function orderMessage(value: CartItem[], productById: ReadonlyMap<string, Product> = defaultCatalog, customer?: Checkout): string {
+/**
+ * `feeCents`: taxa de entrega (número), a combinar (null) ou não se aplica (undefined).
+ */
+export function orderMessage(value: CartItem[], productById: ReadonlyMap<string, Product> = defaultCatalog, customer?: Checkout, feeCents?: number | null): string {
   const items = sanitizeCart(value, productById);
   if (!items.length) throw new Error("Seu carrinho está vazio.");
+  const subtotal = cartTotal(items, productById);
+  const delivery = customer?.fulfillment === "entrega";
   return [
     "Olá, Polpas Becal! Quero fazer este pedido.",
     "", "MEU PEDIDO:", "",
     ...items.map(item => {
+      const kit = kitOf(item.id);
+      const price = unitPrice(item.id, item.quantity, productById);
+      if (kit) {
+        const flavors = kit.items.map(i => `${i.quantity}x ${productById.get(i.id)?.name ?? i.id}`).join(", ");
+        return `${item.quantity}x ${kit.name} (${flavors}) — ${money(price)} cada — subtotal ${money(lineTotal(item, productById))}`;
+      }
       const p = productById.get(item.id)!;
-      return `${item.quantity}x Polpa de ${p.name} (${p.unitLabel}) — ${money(p.priceInCents)} por unidade — subtotal ${money(p.priceInCents * item.quantity)}`;
+      const bulk = price < p.priceInCents ? " (preço por quantidade)" : "";
+      return `${item.quantity}x Polpa de ${p.name} (${p.unitLabel}) — ${money(price)} por unidade${bulk} — subtotal ${money(lineTotal(item, productById))}`;
     }),
-    "", `TOTAL: ${money(cartTotal(items, productById))}`,
+    "",
+    ...(delivery && feeCents !== undefined ? [
+      `Subtotal: ${money(subtotal)}`,
+      feeCents === null ? "Taxa de entrega: a combinar" : `Taxa de entrega: ${feeCents === 0 ? "grátis" : money(feeCents)}`,
+    ] : []),
+    `TOTAL: ${money(subtotal + (delivery && feeCents ? feeCents : 0))}`,
     ...(customer ? [
       "", "MEUS DADOS:", `Nome: ${customer.name}`, `Telefone: ${formatPhone(customer.phone)}`,
-      customer.fulfillment === "entrega" ? `Entrega: ${addressLine(customer)}` : "Retirada no local",
+      delivery ? `Entrega: ${addressLine(customer)}` : "Retirada no local",
     ] : []),
     "", customer?.fulfillment === "retirada"
       ? "Poderiam confirmar o pedido e o horário de retirada?"
-      : customer ? "Poderiam confirmar o pedido e a taxa de entrega?" : "Poderiam confirmar o pedido e as opções de entrega ou retirada?",
+      : customer ? (feeCents === null ? "Poderiam confirmar o pedido e a taxa de entrega?" : "Poderiam confirmar o pedido e o horário de entrega?")
+      : "Poderiam confirmar o pedido e as opções de entrega ou retirada?",
   ].join("\n");
 }
 

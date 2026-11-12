@@ -32,7 +32,7 @@ describe("catálogo", () => {
 });
 
 describe("colunas do banco", () => {
-  const row = { id: "manga", name: "Manga", description: "Polpa", image: "/images/products/manga.webp", price_in_cents: 725, unit_label: "100 g", category: "Clássicos", tone: "peach", stock: 12, low_stock: 5, available: true, featured: true, sort_order: 2 };
+  const row = { id: "manga", name: "Manga", description: "Polpa", image: "/images/products/manga.webp", price_in_cents: 725, unit_label: "100 g", category: "Clássicos", tone: "peach", stock: 12, low_stock: 5, available: true, featured: true, sort_order: 2, bulk_min: 0, bulk_price_in_cents: 0 };
   it("mapeia os campos do banco sem perder o preço em centavos", () => {
     expect(parseProducts([fromRow(row)])[0]).toMatchObject({ id: "manga", priceInCents: 725, unitLabel: "100 g", stock: 12, lowStock: 5, active: true, available: true, sort: 2 });
   });

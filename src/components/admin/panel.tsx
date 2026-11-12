@@ -1,7 +1,9 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { ArrowLeftRight, CalendarDays, Download, ExternalLink, Eye, EyeOff, History, House, KeyRound, LogOut, Menu, Package, Pencil, Plus, Search, ShoppingBag, ShoppingBasket, Star, Trash2, Users, X, type LucideIcon } from "lucide-react";
+import { ArrowLeftRight, Bell, BellOff, Bike, CalendarDays, Download, ExternalLink, Eye, EyeOff, Gift, History, House, KeyRound, LogOut, Menu, Package, Pencil, Plus, Search, ShoppingBag, ShoppingBasket, Star, Trash2, Users, X, type LucideIcon } from "lucide-react";
+import { useOrderAlerts } from "@/components/admin/alerts";
+import { DeliveryView, KitDialog, KitsView } from "@/components/admin/shop";
 import { DeleteDialog, ProductDialog, StockDialog } from "@/components/admin/dialogs";
 import { OrdersView, QuotesView, Segments, timeAgo } from "@/components/admin/orders";
 import { SaleDialog } from "@/components/admin/sale-dialog";
@@ -10,7 +12,7 @@ import type { AdminRepo } from "@/lib/admin-repo";
 import { levelOf, restockList, summarize, toCsv } from "@/lib/admin-stats";
 import { setCatalog, toData } from "@/lib/catalog";
 import { money } from "@/lib/money";
-import type { OrderRecord, Product, QuoteRecord, StockMovement } from "@/types/product";
+import type { DeliveryZone, Kit, OrderRecord, Product, QuoteRecord, StockMovement, StoreSettings } from "@/types/product";
 
 const message = (error: unknown) => error instanceof Error ? error.message : "Não foi possível concluir a operação.";
 const normalize = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -41,25 +43,30 @@ const movementFilters = [
 ] as const;
 type MovementFilter = (typeof movementFilters)[number]["id"];
 
-type View = "inicio" | "pedidos" | "orcamentos" | "produtos" | "movimentacoes" | "equipe";
+type View = "inicio" | "pedidos" | "orcamentos" | "produtos" | "kits" | "entrega" | "movimentacoes" | "equipe";
 const pages: Record<View, { label: string; icon: LucideIcon; title: string; description: string }> = {
   inicio: { label: "Início", icon: House, title: "Início", description: "O que precisa da sua atenção agora." },
   pedidos: { label: "Pedidos", icon: ShoppingBag, title: "Pedidos", description: "Pedidos feitos no site. Combine pelo WhatsApp e confirme aqui para baixar o estoque." },
   orcamentos: { label: "Orçamentos", icon: CalendarDays, title: "Orçamentos da foodbike", description: "Pedidos de orçamento para eventos, feitos na página da foodbike." },
-  produtos: { label: "Produtos", icon: Package, title: "Produtos e estoque", description: "Sabores à venda, preços e quantas unidades há no freezer." },
+  produtos: { label: "Produtos", icon: Package, title: "Produtos e estoque", description: "Sabores à venda, preços, preço por quantidade e quantas unidades há no freezer." },
+  kits: { label: "Kits", icon: Gift, title: "Kits", description: "Combinações de sabores com preço especial. Vender um kit baixa o estoque de cada sabor." },
+  entrega: { label: "Entrega", icon: Bike, title: "Entrega e retirada", description: "Bairros atendidos com a taxa de cada um, pedido mínimo e formas de receber." },
   movimentacoes: { label: "Movimentações", icon: History, title: "Movimentações", description: "Tudo o que entrou e saiu do estoque, com quem registrou." },
   equipe: { label: "Equipe", icon: Users, title: "Equipe", description: "Quem pode entrar no painel e o que cada pessoa pode fazer." },
 };
 
 type Dialog =
   | { type: "product"; product: Product | null } | { type: "stock"; product: Product } | { type: "delete"; product: Product }
-  | { type: "sale" } | { type: "account" } | null;
+  | { type: "sale" } | { type: "account" } | { type: "kit" } | null;
 
 export function Panel({ repo, email, onSignOut }: { repo: AdminRepo; email: string | null; onSignOut: () => void }) {
   const [products, setProducts] = useState<Product[] | null>(null);
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [orders, setOrders] = useState<OrderRecord[] | null>(null);
   const [quotes, setQuotes] = useState<QuoteRecord[] | null>(null);
+  const [kits, setKits] = useState<Kit[] | null>(null);
+  const [zones, setZones] = useState<DeliveryZone[] | null>(null);
+  const [settings, setSettings] = useState<StoreSettings | null>(null);
   const [failure, setFailure] = useState("");
   const [recordsFailure, setRecordsFailure] = useState("");
   const [notice, setNotice] = useState("");
@@ -74,8 +81,11 @@ export function Panel({ repo, email, onSignOut }: { repo: AdminRepo; email: stri
 
   const reload = useCallback(async () => {
     // Estoque e registros carregam separados: se a migração de pedidos faltar, o estoque continua funcionando.
-    const stock = Promise.all([repo.list(), repo.movements()]).then(([list, history]) => {
-      setProducts(list); setMovements(history); setFailure(""); setCatalog(list);
+    const stock = Promise.all([repo.list(), repo.movements()]).then(async ([list, history]) => {
+      setProducts(list); setMovements(history); setFailure("");
+      const [k, z, st] = await Promise.all([repo.kits(list), repo.zones(), repo.settings()]);
+      setKits(k); setZones(z); setSettings(st);
+      setCatalog(list, { kits: k, zones: z, settings: st });
     }).catch(error => setFailure(message(error)));
     const records = Promise.all([repo.orders(), repo.quotes()]).then(([o, q]) => {
       setOrders(o); setQuotes(q); setRecordsFailure("");
@@ -84,12 +94,13 @@ export function Panel({ repo, email, onSignOut }: { repo: AdminRepo; email: stri
   }, [repo]);
   useEffect(() => { const timer = setTimeout(() => void reload(), 0); return () => clearTimeout(timer); }, [reload]);
   useEffect(() => { if (!notice) return; const timer = setTimeout(() => setNotice(""), 3500); return () => clearTimeout(timer); }, [notice]);
-  // Novos pedidos chegam sem recarregar: confere a cada minuto.
+  // Novos pedidos chegam sem recarregar: confere a cada 20 segundos.
   useEffect(() => {
     if (!repo.records) return;
-    const timer = setInterval(() => { repo.orders().then(setOrders).catch(() => {}); }, 60000);
+    const timer = setInterval(() => { repo.orders().then(setOrders).catch(() => {}); }, 20000);
     return () => clearInterval(timer);
   }, [repo]);
+  const alerts = useOrderAlerts(orders);
 
   const done = (text: string) => { setDialog(null); setNotice(text); void reload(); };
   async function toggle(product: Product, key: "active" | "featured") {
@@ -125,6 +136,9 @@ export function Panel({ repo, email, onSignOut }: { repo: AdminRepo; email: stri
   const navigate = (next: View) => { setView(next); setMenu(false); window.scrollTo({ top: 0 }); };
   const counts: Partial<Record<View, number>> = { pedidos: fresh.length, orcamentos: freshQuotes.length, produtos: restock.length };
   const visibleViews = (Object.keys(pages) as View[]).filter(v => v !== "equipe" || manager);
+  const alertsButton = repo.records && <button className="adm-side-link" onClick={() => void (alerts.enabled ? alerts.disable() : alerts.enable())} aria-pressed={alerts.enabled}>
+    {alerts.enabled ? <Bell size={16} /> : <BellOff size={16} />} {alerts.enabled ? "Avisos de pedido ligados" : "Ligar avisos de pedido"}
+  </button>;
   const page = pages[view];
 
   const actions: Record<View, ReactNode> = {
@@ -139,6 +153,8 @@ export function Panel({ repo, email, onSignOut }: { repo: AdminRepo; email: stri
       <button className="adm-btn" onClick={exportMoves} disabled={!shownMoves.length}><Download size={16} /> Exportar</button>
       <button className="adm-btn adm-btn-primary" onClick={() => setDialog({ type: "sale" })} disabled={!all.some(p => p.stock > 0)}><ShoppingBasket size={16} /> Registrar venda</button>
     </>,
+    kits: manager ? <button className="adm-btn adm-btn-primary" onClick={() => setDialog({ type: "kit" })} disabled={!all.length}><Plus size={16} /> Novo kit</button> : null,
+    entrega: null,
     equipe: null,
   };
 
@@ -174,6 +190,7 @@ export function Panel({ repo, email, onSignOut }: { repo: AdminRepo; email: stri
           <strong>{email ?? "Modo demonstração"}</strong>
           <span>{repo.mode === "local" ? "Sem login" : manager ? "Administrador" : "Estoque"}</span>
         </div>
+        {alertsButton}
         <Link className="adm-side-link" href="/produtos/" target="_blank"><ExternalLink size={16} /> Ver loja</Link>
         {repo.changePassword && <button className="adm-side-link" onClick={() => setDialog({ type: "account" })}><KeyRound size={16} /> Minha conta</button>}
         {email && <button className="adm-side-link" onClick={onSignOut}><LogOut size={16} /> Sair</button>}
@@ -198,6 +215,12 @@ export function Panel({ repo, email, onSignOut }: { repo: AdminRepo; email: stri
         </header>
 
         {view === "inicio" && <div className="adm-stack">
+          {repo.records && !alerts.enabled && <div className="adm-callout">
+            <Bell size={20} />
+            <div><strong>Quer ouvir quando chegar pedido?</strong><p>Ligue os avisos: o painel toca um som e mostra uma notificação, mesmo minimizado ou em outra aba. Deixe o painel aberto no computador ou no celular da loja.</p></div>
+            <button className="adm-btn adm-btn-primary" onClick={() => void alerts.enable()}>Ligar avisos</button>
+          </div>}
+          {repo.records && alerts.enabled && alerts.permission === "denied" && <p className="adm-banner">O navegador bloqueou as notificações deste site; o som continua tocando. Para liberar, use o cadeado ao lado do endereço.</p>}
           <section className="adm-pulse" aria-label="Resumo">
             <button onClick={() => navigate("pedidos")} data-tone={fresh.length ? "new" : undefined}><strong>{repo.records ? fresh.length : "—"}</strong><span>{fresh.length === 1 ? "pedido novo" : "pedidos novos"}</span></button>
             <button onClick={() => navigate("orcamentos")} data-tone={freshQuotes.length ? "new" : undefined}><strong>{repo.records ? freshQuotes.length : "—"}</strong><span>{freshQuotes.length === 1 ? "orçamento novo" : "orçamentos novos"}</span></button>
@@ -214,7 +237,7 @@ export function Panel({ repo, email, onSignOut }: { repo: AdminRepo; email: stri
                 : <ul className="adm-mini">{fresh.slice(0, 5).map(o => <li key={o.id}>
                     <button onClick={() => navigate("pedidos")}>
                       <span><strong>{o.customerName || "Cliente"}</strong><small>{o.items.reduce((s, i) => s + i.quantity, 0)} un. · {o.fulfillment === "entrega" ? "entrega" : o.fulfillment === "retirada" ? "retirada" : "combinar"} · {timeAgo(o.createdAt)}</small></span>
-                      <b>{money(o.totalInCents)}</b>
+                      <b>{money(o.totalInCents + (o.deliveryFeeCents ?? 0))}</b>
                     </button>
                   </li>)}</ul>}
             </section>
@@ -290,6 +313,8 @@ export function Panel({ repo, email, onSignOut }: { repo: AdminRepo; email: stri
             : <MovementList items={shownMoves} />}
         </section>}
 
+        {view === "kits" && <KitsView repo={repo} kits={kits} products={all} manager={manager} onChanged={text => { setNotice(text); void reload(); }} onCreate={() => setDialog({ type: "kit" })} />}
+        {view === "entrega" && <DeliveryView repo={repo} zones={zones} settings={settings} manager={manager} onChanged={text => { setNotice(text); void reload(); }} />}
         {view === "equipe" && manager && <TeamView repo={repo} onNotice={setNotice} />}
       </main>
     </div>
@@ -299,6 +324,7 @@ export function Panel({ repo, email, onSignOut }: { repo: AdminRepo; email: stri
     {dialog?.type === "product" && <ProductDialog repo={repo} product={dialog.product} categories={categories} nextSort={all.reduce((max, p) => Math.max(max, p.sort + 1), 0)} onClose={() => setDialog(null)} onSaved={name => done(dialog.product ? `${name} atualizado.` : `${name} criado.`)} />}
     {dialog?.type === "stock" && <StockDialog repo={repo} product={dialog.product} onClose={() => setDialog(null)} onSaved={stock => done(`${dialog.product.name}: saldo de ${units(stock)} un.`)} />}
     {dialog?.type === "delete" && <DeleteDialog repo={repo} product={dialog.product} onClose={() => setDialog(null)} onDeleted={() => done(`${dialog.product.name} excluído.`)} />}
+    {dialog?.type === "kit" && <KitDialog repo={repo} kit={null} products={all} nextSort={(kits ?? []).reduce((max, k) => Math.max(max, k.sort + 1), 0)} onClose={() => setDialog(null)} onSaved={name => done(`${name} criado.`)} />}
     {dialog?.type === "sale" && <SaleDialog repo={repo} products={all} onClose={() => setDialog(null)} onSaved={count => done(`Venda registrada: ${units(count)} un.`)} />}
     {dialog?.type === "account" && repo.changePassword && <AccountDialog email={email ?? ""} changePassword={repo.changePassword} onClose={() => setDialog(null)} onSaved={() => { setDialog(null); setNotice("Senha alterada."); }} />}
   </div>;

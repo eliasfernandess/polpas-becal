@@ -19,7 +19,38 @@ export interface ProductData {
   active: boolean;
   featured: boolean;
   sort: number;
+  /** Preço por quantidade: a partir de `bulkMin` unidades, cada uma sai por `bulkPriceInCents`. 0 = sem. */
+  bulkMin: number;
+  bulkPriceInCents: number;
 }
+
+/* ---------- Kits ---------- */
+
+export interface KitItem { id: string; quantity: number }
+export interface KitData {
+  id: string;
+  name: string;
+  description: string;
+  image: string;
+  priceInCents: number;
+  items: KitItem[];
+  active: boolean;
+  featured: boolean;
+  sort: number;
+}
+export interface Kit extends KitData {
+  /** Derivado: visível e com estoque de todos os sabores. */
+  available: boolean;
+  /** Quantos kits o estoque atual permite montar. */
+  maxUnits: number;
+  /** Quanto custaria comprar os sabores avulsos. */
+  regularInCents: number;
+}
+
+/* ---------- Entrega ---------- */
+
+export interface DeliveryZone { id: string; city: string; district: string; feeCents: number; active: boolean; sort: number }
+export interface StoreSettings { deliveryEnabled: boolean; pickupEnabled: boolean; minOrderCents: number }
 
 export interface Product extends ProductData {
   slug: string;
@@ -47,13 +78,20 @@ export interface StockMovement {
 /* ---------- Pedidos e orçamentos registrados pelo site ---------- */
 
 export type OrderStatus = "pending_whatsapp" | "contacted" | "confirmed" | "cancelled";
-export interface OrderItem { id: string; name: string; unitLabel: string; priceInCents: number; quantity: number }
+export interface OrderItem {
+  id: string; name: string; unitLabel: string; priceInCents: number; quantity: number;
+  /** Ausente em pedidos antigos (= produto). */
+  kind?: "product" | "kit";
+  components?: { id: string; name: string; quantity: number }[];
+}
 export interface OrderRecord {
   id: string;
   createdAt: string;
   status: OrderStatus;
   items: OrderItem[];
   totalInCents: number;
+  /** null: retirada, taxa a combinar ou pedido antigo. */
+  deliveryFeeCents: number | null;
   customerName: string;
   customerPhone: string;
   /** "nao_informado": pedidos feitos antes do checkout com dados do cliente. */

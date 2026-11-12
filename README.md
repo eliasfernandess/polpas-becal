@@ -17,6 +17,7 @@ Sem as duas variáveis do Supabase, tudo roda em **modo demonstração**: a loja
   1. `20261112150046_catalog_orders_quotes.sql`: catálogo, pedidos e orçamentos.
   2. `20261113120000_painel_estoque_equipe.sql`: estoque, movimentações, vendas, equipe, convites e fotos. Acrescenta colunas e permissões **sem recriar tabelas nem apagar dados**, e lança um estoque inicial nos dez sabores.
   3. `20261114120000_pedidos_clientes.sql`: nome, telefone e entrega/retirada nos pedidos, telefone nos orçamentos, leitura de pedidos e orçamentos pela equipe e `confirm_order` (confirma e baixa o estoque).
+  4. `20261115120000_entrega_kits.sql`: preço por quantidade, kits, bairros com taxa, pedido mínimo e regras de entrega/retirada, validados também no banco. Cria um "Kit semana" de exemplo **oculto**, para revisar e mostrar pelo painel.
 - Para aplicar: `npx supabase link --project-ref zcxojunqupnpujhhplnb` (uma vez) e `npx supabase db push`. Sem a CLI, cole cada arquivo no SQL Editor e marque-o como aplicado depois (`npx supabase migration repair --status applied <versão>`). Enquanto a migração 2 faltar, a loja vende sem limite de estoque; enquanto a 3 faltar, os pedidos são registrados sem os dados do cliente (que seguem na mensagem do WhatsApp) e o painel avisa que falta a migração.
 - `products`: visitantes leem só o que está à venda (`available`); a equipe vê também os ocultos. Só administradores criam e editam produtos. O estoque (`stock`) não pode ser gravado diretamente: só muda pelas funções `adjust_stock` e `record_sale`, que registram cada movimentação.
 - `orders`: visitantes podem inserir apenas ID aleatório, itens e total estimado. Um trigger verifica disponibilidade, **estoque** e quantidades, recalcula o total e grava um retrato dos produtos e preços. O cliente não pode ler, alterar ou excluir pedidos, nem definir o status. Um pedido é só uma intenção: quem baixa o estoque é a venda registrada no painel.
@@ -31,15 +32,19 @@ Menu lateral com seis seções (no celular, vira uma gaveta):
 - **Início:** pedidos e orçamentos novos, sabores para repor e o resumo dos últimos 30 dias.
 - **Pedidos:** cada pedido do site com cliente, telefone (abre o WhatsApp), itens, total e entrega ou retirada. Marque como *em contato*, *cancelado* ou **Confirmar pedido**, que baixa o estoque de todos os itens de uma vez. Novos pedidos aparecem sozinhos a cada minuto.
 - **Orçamentos:** pedidos de orçamento da foodbike, com situação (novo, em contato, orçado, confirmado, cancelado).
-- **Produtos:** cadastro com foto, preço, categoria, cor, destaque e alerta de estoque baixo; ocultar, excluir, movimentar (entrada, saída, contagem) e exportar CSV.
+- **Kits:** combinações de sabores com preço próprio (ex.: Kit semana). O painel mostra quanto o cliente economiza, quantos kits o estoque permite montar e avisa se o kit ficou mais caro que os sabores avulsos. Vender ou confirmar um kit baixa o estoque de cada sabor.
+- **Entrega:** liga/desliga entrega e retirada, define o pedido mínimo para entrega e os bairros atendidos com a taxa de cada um. Sem bairros cadastrados, a taxa é combinada pelo WhatsApp.
+- **Produtos:** cadastro com foto, preço, **preço por quantidade** (ex.: a partir de 10 un., R$ 4,00 cada), categoria, cor, destaque e alerta de estoque baixo; ocultar, excluir, movimentar (entrada, saída, contagem) e exportar CSV.
 - **Movimentações:** histórico com busca, filtros, autoria e exportação CSV.
 - **Equipe** (só administradores): contas, funções e convites.
 
 **Registrar venda** baixa vários sabores de uma vez, para vendas que não vieram pelo site.
 
+**Aviso de pedido novo:** em *Ligar avisos de pedido*, o painel toca um som, mostra uma notificação do sistema e põe a contagem no título da aba quando chega pedido (confere a cada 20 segundos). Funciona com o painel aberto, mesmo minimizado ou em outra aba; cada aparelho liga o seu. Com o navegador ou o painel fechados não há aviso: para isso seria preciso notificação push (Edge Function do Supabase).
+
 ## Checkout
 
-O carrinho tem etapas: sacola → seus dados (nome e telefone) → entrega ou retirada → endereço (só na entrega: CEP, rua, número, complemento, bairro, cidade) → confirmar. Telefone e CEP são formatados ao digitar, os campos usam o preenchimento automático do navegador e cada etapa valida só os próprios campos. Com Supabase, **Registrar pedido** grava o pedido e abre o WhatsApp com a referência; sem Supabase, vai direto para o WhatsApp. Os dados do cliente ficam só na memória da página.
+O carrinho tem etapas: sacola → seus dados (nome e telefone) → entrega ou retirada → endereço (só na entrega: bairro da lista com a taxa, CEP, rua, número, complemento) → confirmar com subtotal, taxa e total. Abaixo do pedido mínimo, a entrega aparece bloqueada com o valor que falta. Kits e sabores avulsos disputam o mesmo estoque no carrinho. Telefone e CEP são formatados ao digitar, os campos usam o preenchimento automático do navegador e cada etapa valida só os próprios campos. Com Supabase, **Registrar pedido** grava o pedido e abre o WhatsApp com a referência; sem Supabase, vai direto para o WhatsApp. Os dados do cliente ficam só na memória da página.
 
 ### Contas e funções
 

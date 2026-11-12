@@ -48,6 +48,9 @@ export function ProductDialog({ repo, product, categories, nextSort, onClose, on
   const [active, setActive] = useState(product?.active ?? true);
   const [featured, setFeatured] = useState(product?.featured ?? false);
   const [image, setImage] = useState(product?.image ?? "");
+  const [bulkOn, setBulkOn] = useState(Boolean(product?.bulkMin));
+  const [bulkMin, setBulkMin] = useState(product?.bulkMin ? String(product.bulkMin) : "10");
+  const [bulkPrice, setBulkPrice] = useState(product?.bulkMin ? (product.bulkPriceInCents / 100).toFixed(2).replace(".", ",") : "");
   const [photo, setPhoto] = useState<{ blob: Blob; preview: string } | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [failure, setFailure] = useState("");
@@ -70,6 +73,7 @@ export function ProductDialog({ repo, product, categories, nextSort, onClose, on
       id, name, description, image, priceInCents: parsePrice(price), unitLabel, category, tone,
       stock: editing ? product!.stock : wholeNumber(stock), lowStock: wholeNumber(lowStock),
       active, featured, sort: product?.sort ?? nextSort,
+      bulkMin: bulkOn ? wholeNumber(bulkMin) : 0, bulkPriceInCents: bulkOn ? parsePrice(bulkPrice) : 0,
     };
     const checked = productSchema.safeParse(draft);
     if (!checked.success) {
@@ -130,6 +134,21 @@ export function ProductDialog({ repo, product, categories, nextSort, onClose, on
             <label htmlFor="pf-unit">Unidade</label>
             <input id="pf-unit" value={unitLabel} onChange={event => setUnitLabel(event.target.value)} maxLength={20} placeholder="100 g" autoComplete="off" {...field("unitLabel")} />
             {error("unitLabel")}
+          </div>
+          <div className="adm-field span-2 adm-bulk" data-on={bulkOn}>
+            <label className="adm-check"><input type="checkbox" checked={bulkOn} onChange={event => setBulkOn(event.target.checked)} /><strong>Preço por quantidade</strong><small>Ex.: a partir de 10 unidades, cada uma sai mais barata.</small></label>
+            {bulkOn && <div className="adm-fields">
+              <div className="adm-field">
+                <label htmlFor="pf-bulk-min">A partir de (un.)</label>
+                <input id="pf-bulk-min" inputMode="numeric" value={bulkMin} onChange={event => setBulkMin(event.target.value)} autoComplete="off" {...field("bulkMin")} />
+                {error("bulkMin")}
+              </div>
+              <div className="adm-field">
+                <label htmlFor="pf-bulk-price">Preço de cada (R$)</label>
+                <input id="pf-bulk-price" inputMode="decimal" value={bulkPrice} onChange={event => setBulkPrice(event.target.value)} placeholder="4,00" autoComplete="off" {...field("bulkPriceInCents")} />
+                {error("bulkPriceInCents")}
+              </div>
+            </div>}
           </div>
           <div className="adm-field span-2">
             <label htmlFor="pf-category">Categoria</label>

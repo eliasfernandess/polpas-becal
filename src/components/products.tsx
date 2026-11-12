@@ -2,7 +2,7 @@
 import { useState, type CSSProperties } from "react";
 import { ArrowRight, Check, Minus, Plus, Search, X } from "lucide-react";
 import { ALL_CATEGORIES, categoriesOf } from "@/data/products";
-import { maxQuantityFor } from "@/lib/cart";
+import { roomFor } from "@/lib/cart";
 import { money } from "@/lib/money";
 import { useCart } from "@/store/cart-store";
 import { CatalogStatus, useCatalog } from "@/store/catalog-store";
@@ -13,8 +13,7 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
   const [wanted, setWanted] = useState(1);
   const [added, setAdded] = useState(false);
   const { items, dispatch, announce } = useCart();
-  const inCart = items.find(item => item.id === product.id)?.quantity ?? 0;
-  const room = Math.max(0, maxQuantityFor(product.id) - inCart);
+  const room = roomFor(product.id, items);
   const quantity = Math.min(wanted, Math.max(1, room));
   const lastUnits = product.available && product.stock <= product.lowStock;
   const add = () => {
@@ -37,6 +36,7 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
       <span className="product-category">{product.category}</span>
       <div className="product-title"><h3>{product.name}</h3><span className="product-price">{money(product.priceInCents)}</span></div>
       <p>{product.description}</p>
+      {product.bulkMin > 0 && <span className="product-bulk">A partir de {product.bulkMin} un.: <b>{money(product.bulkPriceInCents)}</b> cada</span>}
       <div className="product-buy">
         {product.available ? <>
           <div className="stepper">

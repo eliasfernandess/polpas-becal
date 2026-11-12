@@ -547,3 +547,54 @@ html[data-motion="on"] [data-reveal].is-static { animation: none; }
   .cart-body[data-direction="forward"] { animation: step-forward 360ms var(--ease); }
   .cart-body[data-direction="back"] { animation: step-back 360ms var(--ease); }
 }
+
+/* ---------- Preço por quantidade e kits ---------- */
+.product-bulk { align-self: flex-start; padding: 3px 10px; border-radius: 999px; background: color-mix(in srgb, var(--tone) 55%, white); font-size: 12.5px; font-weight: 500; color: var(--ink); }
+.product-bulk b { color: var(--tone-deep); }
+.kits { padding-top: clamp(48px, 7vw, 88px); }
+.kits-top .kits { padding-top: 8px; padding-bottom: clamp(32px, 5vw, 56px); }
+.kit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 460px), 1fr)); gap: 16px; }
+.kit-card { display: grid; grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr); padding: 8px; border-radius: var(--r-card); background: var(--pulp); box-shadow: 0 0 0 1px var(--rind); }
+.kit-visual { position: relative; display: grid; place-items: center; min-height: 240px; border-radius: 16px; background: var(--paper-deep); overflow: hidden; }
+.kit-photo { width: 92%; height: 100%; object-fit: contain; }
+.kit-mosaic { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; width: 100%; padding: 12px; }
+.kit-mosaic span { display: grid; place-items: center; aspect-ratio: 1; border-radius: 12px; background: var(--tone); }
+.kit-mosaic img { width: 82%; }
+.kit-mosaic[data-count="1"] { grid-template-columns: minmax(0, 1fr); }
+.kit-mosaic[data-count="3"] span:first-child { grid-row: span 2; aspect-ratio: auto; }
+.kit-flag { position: absolute; left: 10px; top: 10px; padding: 4px 10px; border-radius: 999px; background: var(--sun); color: var(--ink); font-size: 12px; font-weight: 700; }
+.kit-flag.is-out { background: var(--ink); color: var(--paper); }
+.kit-card[data-available="false"] .kit-visual { filter: grayscale(0.6); opacity: 0.7; }
+.kit-info { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 16px 12px 12px 16px; }
+.kit-info .product-category { color: var(--leaf); }
+.kit-regular { font-size: 13px; color: var(--ink-faint); }
+.kit-info p { font-size: 14px; line-height: 1.5; }
+.kit-flavors { display: flex; flex-wrap: wrap; gap: 4px 6px; margin: 2px 0 0; padding: 0; list-style: none; }
+.kit-flavors li { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 7px; border-radius: 999px; background: var(--paper); font-size: 12.5px; font-weight: 500; }
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .kit-card { transition: transform 320ms var(--ease), box-shadow 320ms var(--ease); }
+  .kit-card:hover { transform: translateY(-4px); box-shadow: 0 0 0 1px var(--rind), 0 24px 40px -24px rgba(23, 48, 31, 0.45); }
+}
+
+/* Carrinho: kits, preço por quantidade, mínimo e taxa. */
+.cart-image .kit-mosaic { gap: 2px; padding: 4px; }
+.cart-image .kit-mosaic span { border-radius: 5px; }
+.cart-image .kit-photo { width: 100%; }
+.cart-bulk { color: var(--leaf); font-weight: 600; }
+.cart-bulk-hint { font-size: 12px; color: var(--leaf); }
+.checkout-minimum { margin-top: 12px; padding: 10px 14px; border-radius: var(--r-control); background: #fff3cf; font-size: 14px; color: var(--ink); }
+.checkout-minimum[data-ok="true"] { background: var(--frost); color: var(--leaf); }
+.cart-subtotals { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; font-size: 14px; color: var(--ink-soft); }
+.cart-subtotals b { text-align: right; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+.choice-card[data-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
+.field select { width: 100%; min-height: 48px; padding: 10px 14px; border: 1px solid var(--rind-strong); border-radius: var(--r-control); background: var(--paper); }
+.field > small { font-size: 13px; color: var(--ink-faint); }
+
+@media (max-width: 640px) {
+  .kit-card { grid-template-columns: minmax(0, 1fr); }
+  .kit-visual { min-height: 0; }
+  .kit-mosaic { grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 10px; }
+  .kit-mosaic[data-count="3"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .kit-mosaic[data-count="3"] span:first-child { grid-row: auto; aspect-ratio: 1; }
+  .kit-info { padding: 12px 8px 8px; }
+}
