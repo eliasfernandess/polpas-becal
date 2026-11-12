@@ -6,5 +6,5 @@ export default defineConfig([
   ...ts.configs.recommended,
   { files: ["src/**/*.tsx"], ...a11y.flatConfigs.recommended },
   { files: ["src/**/*.tsx"], plugins: { "react-hooks": hooks }, rules: hooks.configs.recommended.rules },
-  globalIgnores([".next/**", "out/**", "next-env.d.ts", "playwright-report/**", "test-results/**"]),
+  globalIgnores([".vercel/**", ".next/**", "out/**", "next-env.d.ts", "playwright-report/**", "test-results/**"]),
 ]);

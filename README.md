@@ -1,26 +1,27 @@
 # Polpas Becal
 
-Vitrine comercial demonstrativa, construída com Next.js 16, React 19, TypeScript estrito, Tailwind CSS 4, Lucide e Zod. Exportação estática sem servidor de aplicação, banco de dados, autenticação de clientes ou pagamentos.
+Vitrine Next.js 16 / React 19 com catálogo, pedidos e orçamentos no Supabase e hospedagem estática na Vercel. O layout mobile exibe três produtos por linha até 650 px.
 
 ## Executar
 
-Requisitos: Node.js 22 ou superior e npm.
+Node.js 24 e npm. Execute `npm ci`, copie `.env.example` para `.env.local` e configure a URL do projeto e a chave **publishable** do Supabase. Nunca utilize `service_role` ou `sb_secret` no cliente. Execute `npm run dev` ou `npm run build` seguido de `npm run preview`.
 
-```sh
-npm ci
-npm run dev
-```
+Sem as duas variáveis Supabase, o modo local demonstrativo usa `src/data/products.ts` e encaminha mensagens sem gravar no banco. Deploys na Vercel exigem as duas variáveis e falham se elas faltarem. Com Supabase configurado, falhas de conexão mostram erro; o catálogo não retorna silenciosamente aos preços demonstrativos.
 
-Abra http://127.0.0.1:3000. Para conferir o comportamento e os cabeçalhos de **produção**:
+## Integração
 
-```sh
-npm run build
-npm run preview
-```
+- Vercel: projeto `polpas-becal`, conectado a `eliasfernandess/polpas-becal`; Node 24; build `npm run build`.
+- Supabase: projeto `polpas-becal` (`zcxojunqupnpujhhplnb`), região São Paulo (`sa-east-1`).
+- Variáveis públicas: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SITE_URL`.
+- Migração versionada em `supabase/migrations/`. Inclui os dez produtos demonstrativos originais.
+- `products`: leitura pública com RLS; alterações somente pela administração no painel Supabase. Preços em centavos; imagens apontam para arquivos locais em `public/images/`.
+- `orders`: visitantes podem inserir apenas ID aleatório, itens e total estimado. Um trigger com `SECURITY INVOKER` verifica disponibilidade e quantidades, recalcula o total e grava um retrato dos produtos/preços. Alterações de preço exigem atualizar o catálogo antes de registrar. O cliente não pode ler, alterar ou excluir pedidos, nem definir o status.
+- `event_requests`: visitantes podem inserir somente os campos do orçamento. Leitura e alterações são restritas à administração. O banco verifica campos obrigatórios, limites, opções e data.
+- O estado inicial dos registros é `pending_whatsapp`. A equipe acompanha os registros no Table Editor do Supabase e atualiza o status após o contato. Não há confirmação automática de compra, pagamento ou reserva.
+- Repetir uma tentativa de envio na mesma página reutiliza um UUID, evitando duplicação caso a resposta se perca. Ao alterar os dados, uma nova solicitação é criada.
+- Os formulários informam que os dados serão salvos. O carrinho persiste apenas IDs e quantidades no navegador; dados pessoais não são gravados em localStorage/sessionStorage.
 
-O diretório public já inclui todas as imagens otimizadas e fontes locais; os arquivos originais do Downloads não são necessários para executar ou publicar.
-
-## Verificações
+## Verificar
 
 ```sh
 npm run lint
@@ -28,39 +29,26 @@ npm run typecheck
 npm test
 npm run build
 npm run test:e2e
-npm audit
 ```
 
-Os testes E2E usam o Google Chrome instalado. Caso não esteja instalado, instale o navegador pelo canal oficial ou ajuste playwright.config.ts para utilizar o Chromium do Playwright. Os testes usam dois perfis (desktop e celular), interceptam o WhatsApp e não enviam mensagens reais. Build é necessário antes dos testes E2E.
+Os testes E2E usam Chrome. Instale-o pelo Playwright se necessário. As chamadas de gravação são interceptadas nos testes automatizados comuns para evitar pedidos fictícios em produção; a conexão real e as políticas do banco devem ser verificadas separadamente. Testes SQL transacionais ficam em `supabase/tests/` e fazem rollback.
 
-As capturas opcionais são habilitadas pela variável SITE_PREVIEW_DIR apontando para um diretório de saída. A suíte normal ignora apenas os testes de captura, mantendo os oito cenários funcionais.
+## Hospedagem e segurança
 
-## Experiência implementada
+O build exporta `out/` e calcula hashes CSP dos scripts inline. A CSP permite conexão somente à própria origem e ao projeto Supabase configurado. Na Vercel, o Build Output API publica arquivos e cabeçalhos gerados **no mesmo build**, evitando hashes antigos. `out/_headers` e `out/.security-headers.json` atendem outras hospedagens e o preview local.
 
-- Início com identidade da marca, fotografias fornecidas, produtos em destaque e apresentação da foodbike.
-- Catálogo de dez sabores com busca sem distinção de acentos, filtros, quantidades e indisponibilidade.
-- Carrinho em diálogo nativo com retenção de foco, Escape, persistência e atualização entre abas.
-- Total calculado em centavos pelo catálogo atual. Armazenamento contém somente identificadores e quantidades; preços adulterados e itens desconhecidos são descartados.
-- Pedido pelo link oficial wa.me: unidade, valor unitário, quantidade, subtotal, total estimado e pedido de confirmação.
-- Página de eventos e formulário validado com Zod, mensagens próximas aos campos e datas no calendário local.
-- WhatsApp aberto com a solicitação preenchida; fallback de link caso o navegador bloqueie a janela. Não há confirmação automática de envio, compra ou reserva.
-- Termos, privacidade, 404, metadados, imagem social, sitemap e robots. A demonstração usa noindex/nofollow.
+RLS está habilitado em todas as tabelas públicas. A chave publishable identifica o projeto, não um usuário; as permissões do banco são a fronteira de acesso. Nenhuma chave privada é necessária no navegador. Os endpoints de envio são públicos, como os formulários: para tráfego público intenso, monitore abuso e acrescente proteção contra automação conforme a operação exigir.
 
-Rotas: /, /produtos/, /eventos/, /privacidade/, /termos/.
+O site continua demonstrativo, com `noindex/nofollow` e os avisos comerciais. A proteção de acesso configurada na Vercel deve ser preservada até o lançamento aprovado.
 
 ## Onde editar
 
-| Conteúdo | Arquivo |
-| --- | --- |
-| Preços em centavos, unidades, descrições, categorias, destaque e disponibilidade | src/data/products.ts |
-| Número do WhatsApp, Instagram e origem do site | src/data/business.ts |
-| Validação de orçamento, limites de texto e opções | src/lib/validation.ts |
-| Mensagens e validação do destino wa.me | src/lib/whatsapp.ts |
-| Regras de carrinho e persistência | src/lib/cart.ts e src/store/cart-store.tsx |
-| Cores, tipografia e responsividade | src/app/globals.css |
-| Fotografias, marca e arte de eventos | public/images/ |
-
-O arquivo .env.example contém apenas a origem pública opcional NEXT_PUBLIC_SITE_URL. Não são necessários segredos.
+- Layout e responsividade: `src/app/globals.css`.
+- Catálogo em produção: tabela `public.products` no Supabase.
+- Telefone, Instagram e origem: `src/data/business.ts`.
+- Validações do formulário: `src/lib/validation.ts`; limites também estão na migração SQL.
+- Conexão e gravações: `src/lib/supabase.ts` e `src/lib/submissions.ts`.
+- Estado do catálogo/carrinho: `src/store/`.
 
 ## Informações comerciais pendentes
 
@@ -78,44 +66,7 @@ Antes de lançamento público, confirmar com a empresa:
 
 O protótipo não possui depoimentos, números de clientes, promessas de entrega ou pacotes inventados.
 
+
 ## Privacidade
 
-O formulário permanece na memória da página. Nada é salvo em armazenamento local, banco de dados, logs da aplicação ou analytics. O link do WhatsApp é montado no navegador. Abrir o link encaminha o texto preenchido ao serviço WhatsApp/Meta; a empresa recebe a mensagem quando o visitante a envia. A interface explica esse fluxo e mantém os campos preenchidos enquanto a página estiver aberta.
-
-O carrinho usa a chave becal:cart:v1 no localStorage, exclusivamente para IDs e quantidades. O site continua funcionando em memória se o navegador bloquear o armazenamento. Não há pixels, serviços de analytics, fontes remotas nem embeds do Instagram. A hospedagem poderá tratar dados técnicos; a demonstração privada Sites também usa o mecanismo de acesso da plataforma.
-
-Os documentos iniciais não representam certificação de conformidade com a LGPD.
-
-## Segurança e publicação
-
-A aplicação usa escaping do React, validação estrita, limites de entrada, destino do WhatsApp fixo e links externos com noopener/noreferrer. O formulário não usa uma requisição GET para um servidor próprio. Não existem endpoints de escrita, uploads, pagamento ou cadastro.
-
-O build executa scripts/secure-export.mjs **após** o Next.js e calcula hashes SHA-256 dos scripts inline efetivamente exportados. A CSP de produção não permite unsafe-eval nem unsafe-inline para scripts. style-src permite unsafe-inline por compatibilidade com estilos de componentes e do framework; scripts continuam limitados à mesma origem e aos hashes gerados. A política bloqueia objetos, frames e submissões HTML convencionais; orçamento é tratado por JavaScript local.
-
-São gerados out/_headers e vercel.json contendo CSP, nosniff, Referrer-Policy: no-referrer, frame-ancestors, X-Frame-Options: DENY, Permissions-Policy, HSTS e X-Robots-Tag. O servidor de preview efetivamente os envia, e a suíte E2E confere os principais cabeçalhos. HSTS só produz efeito em HTTPS.
-
-### Hospedagem estática
-
-Publique o conteúdo de out após npm ci e npm run build. Não é necessário next start.
-
-- **Sites:** a identidade privada está em .openai/hosting.json. O conteúdo exportado é empacotado e a versão publicada mantém o acesso privado. A versão demonstrativa não deve ser tornada pública antes das confirmações comerciais.
-- **Cloudflare Pages ou hospedagem compatível:** use comando npm run build, saída out e preserve out/_headers.
-- **Vercel:** vercel.json é regenerado a cada build com os hashes correspondentes àquela saída. Preserve a configuração gerada na implantação.
-- **Nginx/Apache/outros:** importe os cabeçalhos de out/.security-headers.json no servidor; sirva caminhos com barra final pelo respectivo index.html e 404.html para inexistentes.
-
-Cabeçalhos configurados em next.config.ts não seriam aplicados por uma hospedagem puramente estática. Por isso eles são gerados na saída e devem ser efetivamente respeitados pela hospedagem escolhida. Confirme com curl -I os cabeçalhos no domínio final. Não minifique nem altere scripts HTML depois do build, pois isso invalida os hashes da CSP.
-
-Para atualizar a aplicação, refaça o build e publique **toda** a saída atomicamente. O servidor local relê os cabeçalhos a cada requisição para acompanhar recompilações.
-
-Ao aprovar o lançamento: ajustar origem, documentos e dados comerciais; revisar a privacidade da hospedagem; alterar robots.ts, metadata.robots e X-Robots-Tag para indexação conforme a estratégia comercial; e repetir as verificações. O sitemap já contempla todas as páginas.
-
-## Materiais e dependências
-
-As imagens foram fornecidas pelo solicitante e apenas redimensionadas/codificadas para WebP. O logotipo foi mantido. A seção e a página de foodbike usam a foto fornecida pelo solicitante, otimizada em WebP com versões de 800 e 1600 pixels. A interface inteira usa DM Sans, sem serifa, servida localmente e com licença em public/fonts.
-
-scripts/prepare-assets.mjs documenta o mapeamento das imagens originais no computador de criação; só é necessário para reprocessá-las. Os nomes e números impressos nas artes permanecem como recebidos, sem recriação do rótulo.
-
-Versões diretas fixadas e package-lock.json versionado. A configuração de ESLint usa typescript-eslint, react-hooks e jsx-a11y; substituiu eslint-config-next porque sua cadeia de ferramentas incluía uma vulnerabilidade transitiva sem correção disponível no momento da montagem. A auditoria final deve ser repetida a cada atualização.
-
-Referências técnicas: [exportação estática do Next.js](https://nextjs.org/docs/app/guides/static-exports), [CSP no Next.js](https://nextjs.org/docs/app/guides/content-security-policy), [LGPD no Planalto](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm).
-
+Pedidos e orçamentos são registrados para atendimento antes da continuação no WhatsApp. A empresa deverá definir retenção, canal de atendimento dos direitos dos titulares e práticas de exclusão. As páginas de privacidade e termos descrevem esse fluxo. Não existem pagamentos, pixels de marketing ou autenticação de clientes. Fotografias e fontes permanecem locais.

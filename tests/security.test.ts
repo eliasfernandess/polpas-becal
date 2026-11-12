@@ -15,7 +15,7 @@ describe("superfície da aplicação", () => {
   it("não contém credenciais privadas reconhecíveis no código público", () => {
     for (const file of sourceFiles("src")) expect(readFileSync(file, "utf8")).not.toMatch(/sk_(?:live|test)_[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{30,}|-----BEGIN (?:RSA )?PRIVATE KEY-----/);
   });
-  it("o único armazenamento de dados persistentes é o carrinho", () => {
+  it("não salva dados do formulário no armazenamento do navegador nem em logs", () => {
     const form = readFileSync("src/components/event-form.tsx", "utf8");
     expect(form).not.toMatch(/localStorage|sessionStorage|fetch\s*\(|console\./);
   });

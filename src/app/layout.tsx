@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Header, Footer } from "@/components/layout";
 import { CartDrawer } from "@/components/cart";
+import { CatalogProvider } from "@/store/catalog-store";
 import { CartProvider } from "@/store/cart-store";
 import { business } from "@/data/business";
 import "./globals.css";
@@ -14,6 +15,6 @@ export const metadata: Metadata = {
 };
 export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#173f2e" };
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="pt-BR"><body><CartProvider><a className="skip-link" href="#conteudo">Pular para o conteúdo</a><Header />{children}<Footer /><CartDrawer /></CartProvider></body></html>;
+  return <html lang="pt-BR"><body><CatalogProvider><CartProvider><a className="skip-link" href="#conteudo">Pular para o conteúdo</a><Header />{children}<Footer /><CartDrawer /></CartProvider></CatalogProvider></body></html>;
 }
 

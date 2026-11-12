@@ -10,3 +10,7 @@ test-results/
 .openai/.local/
 *.tar.gz
 *.zip
+
+.vercel/
+supabase/.temp/
+playwright.local.config.ts

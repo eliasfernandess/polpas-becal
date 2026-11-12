@@ -35,3 +35,13 @@ describe("carrinho", () => {
   it("restaura apenas ids e quantidades válidos", () => expect(parseStoredCart(JSON.stringify([{ id: "manga", quantity: 3 }]))).toEqual([{ id: "manga", quantity: 3 }]));
 });
 
+
+it("usa produtos e preços do catálogo recebido do banco", () => {
+  const live = new Map(productById);
+  live.set("novo-sabor", { ...productById.get("manga")!, id: "novo-sabor", priceInCents: 725 });
+  const items = updateCart([], { type: "add", id: "novo-sabor", quantity: 2 }, live);
+  expect(items).toEqual([{ id: "novo-sabor", quantity: 2 }]);
+  expect(cartTotal(items, live)).toBe(1450);
+  live.set("novo-sabor", { ...live.get("novo-sabor")!, available: false });
+  expect(sanitizeCart(items, live)).toEqual([]);
+});
