@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   openGraph: { type: "website", locale: "pt_BR", siteName: business.name, title: "Polpas Becal — 100% fruta, muito mais sabor", description: "Mais fruta. Mais cor. Mais sabor na sua vida.", images: [{ url: "/images/brand/social.jpg", width: 1200, height: 630, alt: "Polpas Becal" }] },
   icons: { icon: "/icon.svg" },
 };
-export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#fff8e8" };
+export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#17301f" };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return <html lang="pt-BR"><body><CatalogLoader />{children}</body></html>;

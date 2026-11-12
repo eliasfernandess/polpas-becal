@@ -20,7 +20,7 @@ export default function EventsPage() {
 
     <section className="quote" id="orcamento">
       <div className="container quote-grid">
-        <div className="quote-copy">
+        <div className="quote-copy" data-reveal>
           <span className="eyebrow">O primeiro passo é uma conversa</span>
           <h2>Um orçamento feito para <em>o seu momento.</em></h2>
           <p>Sem pacotes prontos por aqui. Compartilhe os detalhes para consultar possibilidades, disponibilidade e valores.</p>

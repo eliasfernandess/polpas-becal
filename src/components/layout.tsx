@@ -2,8 +2,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ArrowUpRight, Camera, Menu, MessageCircle, ShoppingBag, X } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { CartDrawer } from "@/components/cart";
+import { Motion } from "@/components/motion";
 import { business } from "@/data/business";
 import { whatsappUrl } from "@/lib/whatsapp";
 import { CartProvider, useCart } from "@/store/cart-store";
@@ -20,7 +21,15 @@ export function Header() {
   const [menu, setMenu] = useState(false);
   const { items, setOpen } = useCart();
   const count = items.reduce((sum, item) => sum + item.quantity, 0);
-  return <header className="site-header">
+  // Ao rolar, o cabeçalho fica mais baixo e ganha sombra.
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const update = () => setScrolled(window.scrollY > 8);
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    return () => window.removeEventListener("scroll", update);
+  }, []);
+  return <header className="site-header" data-scrolled={scrolled}>
     <div className="container header-inner">
       <Link className="brand" href="/" aria-label="Polpas Becal — início" onClick={() => setMenu(false)}>
         <img src="/images/brand/logo.webp" width="217" height="73" alt="Polpas Becal, 100% fruta" />
@@ -30,7 +39,7 @@ export function Header() {
       </nav>
       <div className="header-actions">
         <button className="cart-trigger" onClick={() => { setMenu(false); setOpen(true); }} aria-label={`Abrir carrinho, ${count} itens`}>
-          <ShoppingBag size={18} /><span className="cart-label">Meu pedido</span><span className="cart-count" data-empty={count === 0}>{count}</span>
+          <ShoppingBag size={18} /><span className="cart-label">Meu pedido</span><span key={count} className="cart-count" data-empty={count === 0} data-bump={count > 0}>{count}</span>
         </button>
         <button className="menu-trigger icon-button" aria-label={menu ? "Fechar menu" : "Abrir menu"} aria-expanded={menu} aria-controls="main-navigation" onClick={() => setMenu(!menu)}>
           {menu ? <X /> : <Menu />}
@@ -75,5 +84,6 @@ export function SiteShell({ children }: { children: ReactNode }) {
     {children}
     <Footer />
     <CartDrawer />
+    <Motion />
   </CartProvider>;
 }

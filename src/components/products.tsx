@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { ArrowRight, Check, Minus, Plus, Search, X } from "lucide-react";
 import { ALL_CATEGORIES, categoriesOf } from "@/data/products";
 import { maxQuantityFor } from "@/lib/cart";
@@ -8,7 +8,8 @@ import { useCart } from "@/store/cart-store";
 import { CatalogStatus, useCatalog } from "@/store/catalog-store";
 import type { Product } from "@/types/product";
 
-export function ProductCard({ product }: { product: Product }) {
+/** `index` escalona a entrada dos cards de uma mesma linha. */
+export function ProductCard({ product, index = 0 }: { product: Product; index?: number }) {
   const [wanted, setWanted] = useState(1);
   const [added, setAdded] = useState(false);
   const { items, dispatch, announce } = useCart();
@@ -23,7 +24,7 @@ export function ProductCard({ product }: { product: Product }) {
     setWanted(1);
     setTimeout(() => setAdded(false), 2200);
   };
-  return <article className={`product-card tone-${product.tone}`} data-available={product.available}>
+  return <article className={`product-card tone-${product.tone}`} data-available={product.available} data-reveal style={{ "--reveal-i": index % 4 } as CSSProperties}>
     <div className="product-visual">
       <span className="product-unit">{product.unitLabel}</span>
       {lastUnits && <span className="product-flag">Últimas {product.stock} un.</span>}
@@ -57,7 +58,7 @@ export function FeaturedProducts() {
   if (loading || error) return <CatalogStatus />;
   const visible = products.filter(p => p.active);
   const featured = visible.filter(p => p.featured);
-  return <div className="product-grid is-featured">{(featured.length ? featured : visible).slice(0, 4).map(p => <ProductCard key={p.id} product={p} />)}</div>;
+  return <div className="product-grid is-featured">{(featured.length ? featured : visible).slice(0, 4).map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}</div>;
 }
 
 const normalize = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -85,7 +86,7 @@ export function ProductCatalog() {
     </div>
     <div className="catalog-results" role="status">{filtered.length} {filtered.length === 1 ? "sabor para descobrir" : "sabores para descobrir"}</div>
     {filtered.length
-      ? <div className="product-grid">{filtered.map(p => <ProductCard key={p.id} product={p} />)}</div>
+      ? <div className="product-grid">{filtered.map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}</div>
       : <div className="no-results">
           <Search size={28} />
           <h3>Esse sabor ainda não está por aqui.</h3>

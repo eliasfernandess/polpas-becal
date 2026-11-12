@@ -14,7 +14,7 @@ export default function ProductsPage() {
       <ProductCatalog />
       <p className="demo-note">Catálogo demonstrativo: todos os preços, unidades e disponibilidades precisam de confirmação comercial.</p>
     </section>
-    <section className="catalog-help container">
+    <section className="catalog-help container" data-reveal>
       <h2>Ficou com vontade de criar uma combinação?</h2>
       <p>Escolha mais de um sabor e monte um pedido com a sua cara. Os detalhes da compra são combinados diretamente com a Polpas Becal.</p>
     </section>

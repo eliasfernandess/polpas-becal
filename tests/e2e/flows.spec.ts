@@ -150,14 +150,14 @@ test("cabeçalhos de segurança, rotas e responsividade", async ({ page, request
   await expect(page).toHaveURL(/produtos/);
 });
 
-test("celular mostra três produtos por linha", async ({ page }) => {
+test("celular mostra dois produtos por linha", async ({ page }) => {
   for (const width of [320, 390]) {
     await page.setViewportSize({ width, height: 800 });
     await page.goto("/produtos/");
     const cards = page.locator(".product-card");
     await expect(cards.nth(3)).toBeVisible();
-    const tops = await cards.evaluateAll(list => list.slice(0, 4).map(el => Math.round(el.getBoundingClientRect().top)));
-    expect(tops[0]).toBe(tops[1]); expect(tops[1]).toBe(tops[2]); expect(tops[3]).toBeGreaterThan(tops[0]);
+    const tops = await cards.evaluateAll(list => list.slice(0, 3).map(el => (el as HTMLElement).offsetTop));
+    expect(tops[0]).toBe(tops[1]); expect(tops[2]).toBeGreaterThan(tops[0]);
     const buttons = await page.locator(".product-card .add-button, .product-card .stepper button").evaluateAll(list => list.map(el => el.getBoundingClientRect().height));
     expect(Math.min(...buttons), `Botões tocáveis em ${width}px`).toBeGreaterThanOrEqual(40);
   }

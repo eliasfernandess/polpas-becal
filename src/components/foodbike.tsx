@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 
 export function FoodbikeBanner() {
-  return <section className="event-banner container">
+  return <section className="event-banner container" data-reveal="zoom">
     <div className="event-banner-copy">
       <span className="eyebrow">Momentos com mais sabor</span>
       <h2>Seu evento merece uma dose de <em>frescor.</em></h2>

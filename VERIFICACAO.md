@@ -21,3 +21,10 @@ Mesclagem de `codex/mobile-tres-produtos` com o novo visual, o painel `/admin/` 
 - E2E em desktop e mobile, nos dois modos de build: **16 aprovados sem Supabase** (loja, orçamento, painel, vendas, convites, 320 px) e **18 aprovados com Supabase simulado** (pedido e orçamento registrados, retentativa sem duplicar, falha do catálogo sem preços locais e sem perder o carrinho, banco sem a migração de estoque, produto esgotado, três produtos por linha).
 - As duas migrações e os testes `access.sql` e `painel.sql` foram executados em Postgres 17 embutido (PGlite) com papéis `anon`/`authenticated` e stubs de `auth`/`storage`; um teste de mutação (dar ao papel Estoque permissão de gravar `stock`) foi detectado.
 - **Não verificado contra o projeto Supabase real:** a migração `20261113120000_painel_estoque_equipe.sql` ainda precisa ser aplicada (`npx supabase db push`), e login, convites e envio de fotos dependem dela.
+
+# Cabeçalho e rodapé escuros, 2 por linha e animações — 13/11/2026
+
+- Celular volta a 2 produtos por linha (cards compactos, botões com 42 px de altura).
+- Cabeçalho e rodapé em verde escuro (#17301f); carrinho em amarelo; cabeçalho encolhe com sombra ao rolar.
+- Animações: entrada das seções e dos cards ao rolar (em cascata), abertura da página inicial, polpas flutuando, etapas do orçamento deslizando, contador do carrinho e ícones reagindo ao toque. Nada fica escondido sem JavaScript, e tudo é desligado com "reduzir movimento".
+- 110 testes unitários; E2E aprovados nos dois modos (16 sem Supabase, 18 com Supabase simulado). Capturas conferidas em desktop e celular, incluindo que nenhum elemento animado fica invisível após rolar a página.

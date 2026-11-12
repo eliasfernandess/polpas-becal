@@ -55,7 +55,8 @@ export function EventForm() {
     }
     return found;
   };
-  const go = (index: number) => { moved.current = true; setErrors({}); setStep(index); setReached(current => Math.max(current, index)); };
+  const [direction, setDirection] = useState<"forward" | "back">("forward");
+  const go = (index: number) => { moved.current = true; setErrors({}); setDirection(index < step ? "back" : "forward"); setStep(index); setReached(current => Math.max(current, index)); };
   const fail = (found: Errors) => {
     setErrors(found);
     const first = Object.keys(found)[0];
@@ -126,6 +127,9 @@ export function EventForm() {
 
     {hasErrors && <p role="alert" className="form-alert">Revise o que está indicado para continuar.</p>}
 
+    {/* A chave muda a cada etapa: o conteúdo novo entra deslizando, na direção do avanço. */}
+    <div className="form-step" key={step} data-direction={direction}>
+
     {step === 0 && <fieldset className="choice-grid" aria-describedby={errors.type ? "type-error" : undefined}>
       <legend className="sr-only">Tipo de evento</legend>
       {eventTypes.map(type => { const Icon = typeIcons[type]; return <label key={type} className="choice-card">
@@ -187,6 +191,8 @@ export function EventForm() {
         ? "Ao solicitar, salvamos os dados do evento para preparar seu orçamento. Só a equipe tem acesso. A conversa continua pelo WhatsApp."
         : "Seus dados ficam apenas nesta página até você enviar a mensagem no WhatsApp. Não salvamos o formulário."}</p>
     </>}
+
+    </div>
 
     {submitError && step === last && <p role="alert" className="form-alert">{submitError}</p>}
 

@@ -1,6 +1,6 @@
 # Polpas Becal
 
-Vitrine Next.js 16 / React 19 com catálogo, pedidos e orçamentos no Supabase, painel de estoque em `/admin/` e hospedagem estática na Vercel. No celular, o catálogo mostra três produtos por linha.
+Vitrine Next.js 16 / React 19 com catálogo, pedidos e orçamentos no Supabase, painel de estoque em `/admin/` e hospedagem estática na Vercel. No celular, o catálogo mostra dois produtos por linha.
 
 ## Executar
 
